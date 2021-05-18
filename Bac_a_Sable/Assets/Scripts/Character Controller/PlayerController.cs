@@ -8,7 +8,7 @@ public class PlayerController : MonoBehaviour
 
 
     // l'acceleleration du joueur
-    public float speed = 5;
+    public float speed = 1;
     // l'acceleleration du joueur
     public float acceleration = 0.75f;
     // la vitesse de rotation du joueur
@@ -18,13 +18,16 @@ public class PlayerController : MonoBehaviour
 
 
 
-    private Transform lookTarget;
+    public Transform lookTarget;
     private Transform camTransform;
+
+    private Transform leftFoot;
+    private Transform rightFoot;
     private Animator anim;
 
     private Quaternion targetRotation;
 
-    [Space(10)]
+    [Space(50)]
     private Vector3 groundPosition;
     public Vector3 targetDir;
     public Vector3 rawTargetDir;
@@ -39,17 +42,20 @@ public class PlayerController : MonoBehaviour
 
     [Space(10)]
     public float horizontal;
-    public float rawHorizontal;
     public float vertical;
+    public float rawHorizontal;
     public float rawVertical;
 
     private bool isGrounded;
+    private bool rightFootForward;
 
     private void Start()
     {
         camTransform = Camera.main.transform;
-
         anim = GetComponentInChildren<Animator>();
+
+        leftFoot = anim.GetBoneTransform(HumanBodyBones.LeftFoot);
+        rightFoot = anim.GetBoneTransform(HumanBodyBones.RightFoot);
     }
 
     private void Update()
@@ -82,31 +88,35 @@ public class PlayerController : MonoBehaviour
     }
 
     void GetMovementVariable()
-    {
-        horizontal = Input.GetAxis("Horizontal");
-        vertical = Input.GetAxis("Vertical");
+    {   
         rawHorizontal = Input.GetAxisRaw("Horizontal");
         rawVertical = Input.GetAxisRaw("Vertical");
+        horizontal = Input.GetAxis("Horizontal");
+        vertical = Input.GetAxis("Vertical");
 
-
-        targetDir = camTransform.forward * rawVertical;
-        targetDir += camTransform.right * rawHorizontal;
-        targetDir.y = 0;
 
         rawTargetDir = camTransform.forward * rawVertical;
         rawTargetDir += camTransform.right * rawHorizontal;
         rawTargetDir.y = 0;
 
-
-
         dotNewDirection = Vector3.Dot(rawTargetDir, transform.forward);
         turnDirection = Vector3.Dot(transform.right, rawTargetDir);
+
+
+
+        targetDir = camTransform.forward * vertical;
+        targetDir += camTransform.right * horizontal;
+        targetDir.y = 0;
+
+    
+
 
         float targetMoveAmount = Vector3.Magnitude(targetDir);
         if (targetMoveAmount > 0)
             moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
         else
-            moveAmount = 0;
+            moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * 5);
+
 
         Quaternion tr = Quaternion.LookRotation(targetDir);
         targetRotation = Quaternion.Slerp(
@@ -118,49 +128,44 @@ public class PlayerController : MonoBehaviour
             targetRotation = transform.rotation;
         }
 
-        anim.SetFloat("Vertical", moveAmount);
-
-        anim.SetFloat("Horizontal", turnAmount);
-
-        anim.transform.localPosition = Vector3.zero;
-        transform.position = anim.rootPosition;
         transform.rotation = targetRotation;
 
 
-    
-        if ((tr.eulerAngles - transform.eulerAngles).sqrMagnitude > 0.1f)
+        if ((tr.eulerAngles - transform.eulerAngles).sqrMagnitude > 100)
         {
             float targetTurnAmount = Vector3.Dot(transform.right, targetDir);
 
-            turnAmount = Mathf.Lerp(turnAmount, targetTurnAmount, Time.unscaledDeltaTime * 3);
+            turnAmount = Mathf.Lerp(turnAmount, targetTurnAmount, Time.unscaledDeltaTime * 10);
         }
         else
-            turnAmount = Mathf.Lerp(turnAmount, 0, Time.unscaledDeltaTime * 3);
+            turnAmount = 0;
 
 
 
-      //  Vector3 lookTargetPosition = Vector3.Lerp(lookTarget.position, (anim.GetBoneTransform(HumanBodyBones.Head).position + cam.transform.forward * 10), Time.deltaTime * 8);
-      //  lookTargetPosition.y = anim.GetBoneTransform(HumanBodyBones.Head).position.y;
-      //  lookTarget.position = lookTargetPosition;
+        Vector3 lf_relativPos = transform.InverseTransformPoint(leftFoot.position);
+        Vector3 rf_relativPos = transform.InverseTransformPoint(rightFoot.position);
 
-     //   if (Vector3.Dot(rawTargetDir, transform.forward) < 0f)
-     //   {
-     //       if (Vector3.Dot(transform.right, rawTargetDir) < 0)
-     //       {
-     //           left_180 = true;
-     //           right_180 = false;
-     //       }
-     //       else
-     //       {
-     //           left_180 = false;
-     //           right_180 = true;
-     //       }
-     //   }
-     //   else
-     //   {
-     //       left_180 = false;
-     //       right_180 = false;
-     //   }
+        rightFootForward = false;
+        if (rf_relativPos.z > lf_relativPos.z)
+            rightFootForward = true;
+
+
+        anim.SetFloat("Forward", moveAmount);
+        anim.SetFloat("Turn", turnAmount);
+        anim.SetFloat("DotDirection", dotNewDirection);
+        anim.SetBool("RightFootForward", rightFootForward);
+
+
+
+        Vector3 lookTargetPosition = Vector3.Lerp(lookTarget.position, (anim.GetBoneTransform(HumanBodyBones.Head).position + camTransform.transform.forward * 10), Time.deltaTime * 8);
+        lookTarget.position = lookTargetPosition;
+    }
+
+    private void LateUpdate()
+    {
+        transform.position = anim.deltaPosition * speed;
+        anim.transform.localPosition = Vector3.zero;
+        anim.transform.localEulerAngles = Vector3.zero;
     }
 }
 
