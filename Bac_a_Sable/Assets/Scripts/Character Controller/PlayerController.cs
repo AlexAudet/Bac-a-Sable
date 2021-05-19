@@ -5,17 +5,22 @@ using DG.Tweening;
 
 public class PlayerController : MonoBehaviour
 {
-
-
+    public string SprintInput = "Sprint";
+    [Space(50)]
     // l'acceleleration du joueur
     public float speed = 1;
     // l'acceleleration du joueur
-    public float acceleration = 0.75f;
+    public float acceleration = 4;
     // la vitesse de rotation du joueur
-    public float rotationSpeed = 0.75f;
+    public float rotationSpeed = 5;
+    //La vitesse a que la hauteur du joueur s'adapte au sol
+    public float heightFromGroundAdaptation = 20;
+    //la force de la gravité si le joueur ne touche pas le sol
+    public float gravityForce = 9;
     // A partir de quelle distance le player est considéré dans les airs
-    public float airDis = 0.75f;
-
+    public float groundCheckDistance = 0.5f;
+    // A partir de quelle distance le player est considéré dans les airs
+    public float airGroundCheckDistance = 0.1f;
 
 
     public Transform lookTarget;
@@ -27,25 +32,28 @@ public class PlayerController : MonoBehaviour
 
     private Quaternion targetRotation;
 
-    [Space(50)]
+    [Space(100)]
     private Vector3 groundPosition;
-    public Vector3 targetDir;
-    public Vector3 rawTargetDir;
+    private Vector3 targetDir;
+    private Vector3 rawTargetDir;
+    private Vector3 lastPos;
 
     [Space(10)]
-    public float moveAmount;
-    public float turnAmount;
+    private float moveAmount;
+    private float turnAmount;
+    private float YVelocity;
 
     [Space(10)]
-    public float dotNewDirection;
-    public float turnDirection;
+    private float dotNewDirection;
+    private float turnDirection;
 
     [Space(10)]
-    public float horizontal;
-    public float vertical;
-    public float rawHorizontal;
-    public float rawVertical;
+    private float horizontal;
+    private float vertical;
+    private float rawHorizontal;
+    private float rawVertical;
 
+    private bool isSprinting;
     private bool isGrounded;
     private bool rightFootForward;
 
@@ -61,25 +69,97 @@ public class PlayerController : MonoBehaviour
     private void Update()
     {
         GetMovementVariable();
+        ProcessAnimationVariable();
+        WhichFootForward();
+        LookTarget();
+        Sprint();
+    }
+    private void LateUpdate()
+    {
+        AdjustPlayerHeightFromGround();
+        SetAnimationVariable();
+        SetPlayerTransform();
+      
+    }
+    private void FixedUpdate()
+    {
+        CheckIfGrounded();
     }
 
+    //Check si le player touche au sol
     void CheckIfGrounded()
     {
-        Vector3 origin = transform.position;
-        origin.y += 1f;
-
         Vector3 dir = -Vector3.up;
-        float dis = airDis;
 
+        Vector3 origin = transform.position;
+        origin.y += 2;
+
+        Vector3 leftOrigin = leftFoot.position;
+        leftOrigin.y += 0.5f;
+
+        Vector3 rightOrigin = rightFoot.position;
+        rightOrigin.y += 0.5f;
+
+        float dis;
+        float leftDis;
+        float rightDis;
+
+        if (isGrounded)
+        {
+            dis = groundCheckDistance + 2;
+            leftDis = groundCheckDistance + 1;
+            rightDis = groundCheckDistance +  1;
+        }
+        else
+        {
+            dis = airGroundCheckDistance + 2;
+            leftDis = airGroundCheckDistance + 0.5f;
+            rightDis = airGroundCheckDistance + 0.5f;
+        }
+  
+
+        Debug.DrawRay(origin, dir * dis);
+        Debug.DrawRay(leftOrigin, dir * leftDis);
+        Debug.DrawRay(rightOrigin, dir * rightDis);
 
         RaycastHit hit;
-        Debug.DrawRay(origin, dir * dis);
+        RaycastHit leftHit;
+        RaycastHit rightHit;
 
-        if (Physics.Raycast(origin, dir, out hit, dis, LayerMask.GetMask("Default")))
+        if (Physics.Raycast(origin, dir, out hit, dis))
+        {         
+            if(hit.transform.gameObject.layer != LayerMask.GetMask("Player"))
+            {
+                groundPosition = hit.point;
+
+                isGrounded = true;
+            }
+        }
+        else
         {
-            groundPosition = hit.point;
+            isGrounded = false;
+        }
 
-            isGrounded = true;
+
+        if (Physics.Raycast(leftOrigin, dir, out leftHit, leftDis))
+        {
+            if (hit.transform.gameObject.layer != LayerMask.GetMask("Player"))
+            {
+                isGrounded = true;
+            }
+        }
+        else
+        {
+            isGrounded = false;
+        }
+
+
+        if (Physics.Raycast(rightOrigin, dir, out rightHit, rightDis))
+        {
+            if (hit.transform.gameObject.layer != LayerMask.GetMask("Player"))
+            {
+                isGrounded = true;
+            }
         }
         else
         {
@@ -87,6 +167,27 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    //Ajuste la hauteur du player par rapport au sol
+    void AdjustPlayerHeightFromGround()
+    {
+        Vector3 heightPos;
+
+        if (isGrounded == true)
+        {
+            heightPos = transform.position;
+            heightPos.y = groundPosition.y;
+            transform.position = Vector3.Lerp(transform.position, heightPos, Time.deltaTime * heightFromGroundAdaptation);
+        }
+        else
+        {
+            heightPos = transform.position;
+            heightPos.y -= 1;
+            transform.position = Vector3.Lerp(transform.position, heightPos, Time.deltaTime * gravityForce);
+        }
+
+    }
+
+    //Get les variable des géré par les input;
     void GetMovementVariable()
     {   
         rawHorizontal = Input.GetAxisRaw("Horizontal");
@@ -94,29 +195,40 @@ public class PlayerController : MonoBehaviour
         horizontal = Input.GetAxis("Horizontal");
         vertical = Input.GetAxis("Vertical");
 
-
         rawTargetDir = camTransform.forward * rawVertical;
         rawTargetDir += camTransform.right * rawHorizontal;
         rawTargetDir.y = 0;
 
+        targetDir = camTransform.forward * vertical;
+        targetDir += camTransform.right * horizontal;
+        targetDir.y = 0;     
+    }
+
+    //calcul les variable comme le moveAmount ou le turnAmount pour pouvoir les envoyer a l'animator
+    void ProcessAnimationVariable()
+    {
         dotNewDirection = Vector3.Dot(rawTargetDir, transform.forward);
         turnDirection = Vector3.Dot(transform.right, rawTargetDir);
 
 
-
-        targetDir = camTransform.forward * vertical;
-        targetDir += camTransform.right * horizontal;
-        targetDir.y = 0;
-
-    
+        YVelocity = (transform.position - lastPos).magnitude;
+        lastPos = transform.position;
+        if (YVelocity > 1)
+            YVelocity = 1;
+        if (YVelocity < -1)
+            YVelocity = -1;
 
 
         float targetMoveAmount = Vector3.Magnitude(targetDir);
         if (targetMoveAmount > 0)
-            moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
+        {
+            if (isSprinting == false)
+                moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
+            else
+                moveAmount = Mathf.Lerp(moveAmount, 2, Time.unscaledDeltaTime * acceleration);
+        }
         else
             moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * 5);
-
 
         Quaternion tr = Quaternion.LookRotation(targetDir);
         targetRotation = Quaternion.Slerp(
@@ -128,9 +240,6 @@ public class PlayerController : MonoBehaviour
             targetRotation = transform.rotation;
         }
 
-        transform.rotation = targetRotation;
-
-
         if ((tr.eulerAngles - transform.eulerAngles).sqrMagnitude > 100)
         {
             float targetTurnAmount = Vector3.Dot(transform.right, targetDir);
@@ -138,9 +247,39 @@ public class PlayerController : MonoBehaviour
             turnAmount = Mathf.Lerp(turnAmount, targetTurnAmount, Time.unscaledDeltaTime * 10);
         }
         else
-            turnAmount = 0;
+            turnAmount = Mathf.Lerp(turnAmount, 0, Time.unscaledDeltaTime * 10);
 
+        if (turnAmount > 1)
+            turnAmount = 1;
 
+        if (turnAmount < -1)
+            turnAmount = -1;
+    }
+
+    //Set les transform du jouer comme la rotation et la position et garde le model au centre du parent
+    void SetPlayerTransform()
+    {
+        transform.position += anim.deltaPosition * speed;
+        transform.rotation = targetRotation;
+
+        anim.transform.localPosition = Vector3.zero;
+        anim.transform.localEulerAngles = Vector3.zero;
+    }
+
+    //Envoie les variable calculé a l'Animator pour joué avec les blendTrees
+    void SetAnimationVariable()
+    {
+        anim.SetFloat("Forward", moveAmount);
+        anim.SetFloat("Turn", turnAmount);
+        anim.SetFloat("DotDirection", dotNewDirection);
+        anim.SetFloat("YVelocity", YVelocity);
+        anim.SetBool("RightFootForward", rightFootForward);
+        anim.SetBool("IsGrounded", isGrounded);
+    }
+
+    //Check quelle pied est devant pour pouvoir lancé les animation en conséquence du pied qui est en avant
+    void WhichFootForward()
+    {
 
         Vector3 lf_relativPos = transform.InverseTransformPoint(leftFoot.position);
         Vector3 rf_relativPos = transform.InverseTransformPoint(rightFoot.position);
@@ -148,25 +287,28 @@ public class PlayerController : MonoBehaviour
         rightFootForward = false;
         if (rf_relativPos.z > lf_relativPos.z)
             rightFootForward = true;
+    }
 
-
-        anim.SetFloat("Forward", moveAmount);
-        anim.SetFloat("Turn", turnAmount);
-        anim.SetFloat("DotDirection", dotNewDirection);
-        anim.SetBool("RightFootForward", rightFootForward);
-
-
-
+    //Set la position du LookTarget pour que la tete du player tourne dans la direction avec le component LookAtIk
+    void LookTarget()
+    {
         Vector3 lookTargetPosition = Vector3.Lerp(lookTarget.position, (anim.GetBoneTransform(HumanBodyBones.Head).position + camTransform.transform.forward * 10), Time.deltaTime * 8);
+        lookTargetPosition.y = anim.GetBoneTransform(HumanBodyBones.Head).position.y;
         lookTarget.position = lookTargetPosition;
     }
 
-    private void LateUpdate()
+    //Check si le player cours ou non
+    void Sprint()
     {
-        transform.position = anim.deltaPosition * speed;
-        anim.transform.localPosition = Vector3.zero;
-        anim.transform.localEulerAngles = Vector3.zero;
+        if (Input.GetButton(SprintInput))
+        {
+            isSprinting = true;
+        }
+        else
+            isSprinting = false;
     }
+
+ 
 }
 
 

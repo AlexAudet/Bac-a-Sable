@@ -66,7 +66,7 @@ public class CameraController : MonoBehaviour
 	public float maxDistance = 10; // The maximum distance to target
 	public float zoomSpeed = 10f; // The speed of interpolating the distance
 	public float zoomSensitivity = 1f; // The sensitivity of mouse zoom
-
+	
 	[Header("Blocking")]
 	public LayerMask blockingLayers;
 	public float blockingRadius = 1f;
