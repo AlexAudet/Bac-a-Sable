@@ -66,6 +66,8 @@ public class PlayerController : MonoBehaviour
     private Vector3 rawTargetDir;
     private Vector3 lastPos;
     private Vector3 slideDirection;
+    private Vector3 leftHandPos;
+    private Vector3 rightHandPos;
 
     private float moveAmount;
     private float turnAmount;
@@ -139,6 +141,16 @@ public class PlayerController : MonoBehaviour
             Gizmos.DrawWireSphere(endPoint, sphereCastRadius);
 
             Gizmos.DrawLine(startPoint, endPoint);
+
+            if (obstacleForward)
+            {
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawWireSphere(leftHandPos, 0.2f);
+
+
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawWireSphere(rightHandPos, 0.2f);
+            }
         }
     }
 
@@ -224,9 +236,9 @@ public class PlayerController : MonoBehaviour
         if (Physics.SphereCast(origin, sphereCastRadius, Vector3.down, out hit, sphereCastDistance, castingMask))
         {
             groundSlopeAngle = Vector3.Angle(hit.normal, Vector3.up);
-            Vector3 temp = Vector3.Cross(hit.normal, Vector3.down);
-           
+            Vector3 temp = Vector3.Cross(hit.normal, Vector3.down);          
         }
+
         RaycastHit slopeHit1;
         RaycastHit slopeHit2;
 
@@ -254,7 +266,6 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-
         if(groundSlopeAngle > 1)
         {
             Vector3 firstRay = transform.position + transform.forward * 0.2f;
@@ -264,7 +275,6 @@ public class PlayerController : MonoBehaviour
             Vector3 upOrDownRay = transform.position + transform.forward * 0.6f;
             upOrDownRay.y += 1;
             Debug.DrawRay(upOrDownRay, -Vector3.up * 3, Color.green);
-
 
             RaycastHit firstHit;
             RaycastHit slopeDirHit;
@@ -283,7 +293,6 @@ public class PlayerController : MonoBehaviour
             {
                 upOrDownPosition = upOrDownHit.point;
             }
-
 
             Vector3 secondRay = firstHit.normal + transform.position;
             Debug.DrawRay(transform.position, firstHit.normal, Color.green);
@@ -307,13 +316,11 @@ public class PlayerController : MonoBehaviour
 
     //Ajuste la hauteur du player par rapport au sol
     void AdjustPlayerHeightFromGround()
-    {
-      
+    {      
         Vector3 heightPos;
 
         if (isGrounded == true)
         {
-
             heightPos = transform.position;
             heightPos.y = groundPosition.y;
             transform.position = Vector3.Lerp(transform.position, heightPos, Time.deltaTime * heightFromGroundAdaptation);
@@ -324,7 +331,6 @@ public class PlayerController : MonoBehaviour
             heightPos.y -= 1;
             transform.position = Vector3.Lerp(transform.position, heightPos, Time.deltaTime * gravityForce);
         }
-
     }
 
     //Get les variable des géré par les input;
@@ -350,7 +356,6 @@ public class PlayerController : MonoBehaviour
         dotNewDirection = Vector3.Dot(rawTargetDir, transform.forward);
         turnDirection = Vector3.Dot(transform.right, rawTargetDir);
 
-
         YVelocity = (transform.position - lastPos).magnitude;
         lastPos = transform.position;
         if (YVelocity > 1)
@@ -363,18 +368,10 @@ public class PlayerController : MonoBehaviour
         {
             if (targetMoveAmount > 0)
             {
-                if(obstacleForward == false)
-                {
-                    if (isSprinting == false)
-                        moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
-                    else
-                        moveAmount = Mathf.Lerp(moveAmount, 2, Time.unscaledDeltaTime * acceleration);
-                }
+                if (isSprinting == false)
+                    moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
                 else
-                {
-                    moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * 200);
-                }
-               
+                    moveAmount = Mathf.Lerp(moveAmount, 2, Time.unscaledDeltaTime * acceleration);            
             }
             else
                 moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * (isGrounded ? 5 : 200));
@@ -391,17 +388,12 @@ public class PlayerController : MonoBehaviour
 
             if(groundSlopeAngle < maxSlopeWalkable)
             {
-                if (obstacleForward == false)
-                {
-                    if (downSlope == false)
-                        moveAmount = Mathf.Lerp(moveAmount, slopeMoveAmount, Time.deltaTime * 5);
-                    else
-                        moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
-                }
+             
+                if (downSlope == false)
+                    moveAmount = Mathf.Lerp(moveAmount, slopeMoveAmount, Time.deltaTime * 5);
                 else
-                {
-                    moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * 200);
-                }
+                    moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
+
                    
 
                 isSliding = false;
@@ -495,25 +487,44 @@ public class PlayerController : MonoBehaviour
     //Regarde si il y a un obstacle devant le player
     void CheckIfObstaceForward()
     {
-        Vector3 dir = transform.forward;
-        Vector3 origin = transform.position; 
-        origin.y += 1.5f;
+        Vector3 firstOrigin = transform.position;
+        firstOrigin.y += 1;
 
-        Debug.DrawRay(origin, dir * forwardObstacleCheckDistance, Color.cyan);
-        RaycastHit hit;
+        Debug.DrawRay(firstOrigin, transform.forward * forwardObstacleCheckDistance, Color.cyan);
+        RaycastHit firstHit;
 
-
-        if (Physics.Raycast(origin, dir, out hit, forwardObstacleCheckDistance))
+        if (Physics.Raycast(firstOrigin, transform.forward, out firstHit, forwardObstacleCheckDistance))
         {
-            if (hit.transform.gameObject.layer != LayerMask.GetMask("Player"))
+            obstacleForward = true;
+
+            Vector3 secondOrigin = firstHit.point + -firstHit.normal / 2;
+            secondOrigin.y += 4;
+
+            
+
+            Debug.DrawRay(secondOrigin, Vector3.down * 5, Color.cyan);
+            RaycastHit secondHit;
+
+            if (Physics.Raycast(secondOrigin, Vector3.down, out secondHit, 5))
             {
-                obstacleForward = true;
+                Vector3 leftNormal = firstHit.normal;
+                leftNormal.z += 90;
+                leftNormal = leftNormal.normalized;
+                leftHandPos = firstHit.point + leftNormal / 2;
+                Debug.DrawRay(firstHit.point, leftNormal / 2, Color.cyan);
+                leftHandPos.y = secondHit.point.y;
+                Debug.DrawRay(firstHit.point + leftNormal / 2, Vector3.up * (secondHit.point.y - firstHit.point.y), Color.cyan);
+
+
+                Vector3 rightNormal = firstHit.normal;
+                rightNormal.z -= 90;
+                rightNormal = rightNormal.normalized;
+                rightHandPos = firstHit.point + rightNormal / 2;
+                Debug.DrawRay(firstHit.point, rightNormal / 2, Color.cyan);
+                rightHandPos.y = secondHit.point.y;
+                Debug.DrawRay(firstHit.point + rightNormal / 2, Vector3.up *(secondHit.point.y - firstHit.point.y), Color.cyan);
             }
         }
-        else
-        {
-            obstacleForward = false;
-        } 
     }
 
     //Check quelle pied est devant pour pouvoir lancé les animation en conséquence du pied qui est en avant
