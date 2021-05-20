@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
+using Sirenix.OdinInspector;
 
 public class PlayerController : MonoBehaviour
 {
@@ -10,8 +11,14 @@ public class PlayerController : MonoBehaviour
     [Space(50)]
     public string SprintInput = "Sprint";
     [Space(50)]
-    // l'acceleleration du joueur
+    //si on affiche les Ray debug ou non
+    public bool showDebug = false;                 
+    //le point que le player regarde
+    public Transform lookTarget;
+    // speed multiply du joueur
     public float speed = 1;
+    // sprint speed multiply du joueur
+    public float sprintSpeed = 1;
     // l'acceleleration du joueur
     public float acceleration = 4;
     // la vitesse de rotation du joueur
@@ -21,57 +28,56 @@ public class PlayerController : MonoBehaviour
     //la force de la gravité si le joueur ne touche pas le sol
     public float gravityForce = 9;
 
+    // la distance que le player check si il est face a un mur ou non
     public float forwardObstacleCheckDistance = 0.5f;
     // A partir de quelle distance le player est considéré dans les airs
     public float groundCheckDistance = 0.5f;
     // A partir de quelle distance le player est considéré dans les airs
     public float airGroundCheckDistance = 0.1f;
 
+    [Header("Slope")]
     public float maxSlopeWalkable = 35f;
     public float minSlopeAffectSpeed = 15;
-
-    [Header("Results")]
-    public float slopDirection;
-    public float groundSlopeAngle = 0f;            // Angle of the slope in degrees
-
-    [Header("Settings")]
-    public bool showDebug = false;                  // Show debug gizmos and lines
-    public LayerMask castingMask;                  // Layer mask for casts. You'll want to ignore the player.
-    public float startDistanceFromBottom = 0.2f;   // Should probably be higher than skin width
+    public float overSlopeDecceleration = 3;
+    public float slideingAcceleration = 0.5f;
+    public Vector2 slidingSpeedRange = new Vector2(2,15);
+    
+   
+    [Header("Slope Settings")]
+    public LayerMask castingMask;                  
+    public float startDistanceFromBottom = 0.2f;   
     public float sphereCastRadius = 0.25f;
-    public float sphereCastDistance = 0.75f;       // How far spherecast moves down from origin point
-
+    public float sphereCastDistance = 0.75f;       
     public float raycastLength = 0.75f;
     public Vector3 rayOriginOffset1 = new Vector3(-0.2f, 0f, 0.16f);
     public Vector3 rayOriginOffset2 = new Vector3(0.2f, 0f, -0.16f);
 
 
-    public Transform lookTarget;
-    private Transform camTransform;
 
+    private Transform camTransform;
     private Transform leftFoot;
     private Transform rightFoot;
     private Animator anim;
 
     private Quaternion targetRotation;
 
-    [Space(100)]
-    public Vector3 groundPosition;
+    private Vector3 groundPosition;
     private Vector3 targetDir;
     private Vector3 rawTargetDir;
     private Vector3 lastPos;
-    public  Vector3 slideDirection;
+    private Vector3 slideDirection;
 
-    [Space(10)]
     private float moveAmount;
     private float turnAmount;
+
     private float YVelocity;
 
-    [Space(10)]
+    private float slideSpeed;
+    private float groundSlopeAngle = 0f;           
+
     private float dotNewDirection;
     private float turnDirection;
 
-    [Space(10)]
     private float horizontal;
     private float vertical;
     private float rawHorizontal;
@@ -80,7 +86,8 @@ public class PlayerController : MonoBehaviour
     private bool obstacleForward;
     private bool isSprinting;
     private bool isGrounded;
-    public bool downSlope;
+    private bool downSlope;
+    private bool isSliding;
     private bool rightFootForward;
 
     private void Start()
@@ -110,12 +117,10 @@ public class PlayerController : MonoBehaviour
     private void FixedUpdate()
     {
         CheckIfGrounded();
-        //CheckIfObstaceForward();
+        CheckIfObstaceForward();
 
         if (isGrounded)
-        {
-            CheckGround(transform.position);
-        }
+            CheckGroundSlope(transform.position);
     }
 
 
@@ -212,7 +217,8 @@ public class PlayerController : MonoBehaviour
 
     }
 
-    public void CheckGround(Vector3 origin)
+    //Check l'inclinaison du sol et determine si on la monde ou descent
+    public void CheckGroundSlope(Vector3 origin)
     {
         RaycastHit hit;
         if (Physics.SphereCast(origin, sphereCastRadius, Vector3.down, out hit, sphereCastDistance, castingMask))
@@ -249,48 +255,54 @@ public class PlayerController : MonoBehaviour
         }
 
 
-
-        Vector3 firstRay = transform.position + transform.forward * 0.2f;
-        firstRay.y += 1;      
-        Debug.DrawRay(firstRay, -Vector3.up * 3, Color.green);
-
-        Vector3 upOrDownRay = transform.position + transform.forward * 0.6f;
-        upOrDownRay.y += 1;
-        Debug.DrawRay(upOrDownRay, -Vector3.up * 3, Color.green);
-
-
-        RaycastHit firstHit;
-        RaycastHit slopeDirHit;
-        RaycastHit upOrDownHit;
-
-        Vector3 firstHitPosition = Vector3.zero;
-        Vector3 slopeDirPosition = Vector3.zero;
-        Vector3 upOrDownPosition = Vector3.zero;
-
-        if (Physics.Raycast(firstRay, -Vector3.up, out firstHit, 3, LayerMask.GetMask("Default")))
+        if(groundSlopeAngle > 1)
         {
-            firstHitPosition = firstHit.point;
+            Vector3 firstRay = transform.position + transform.forward * 0.2f;
+            firstRay.y += 1;
+            Debug.DrawRay(firstRay, -Vector3.up * 3, Color.green);
+
+            Vector3 upOrDownRay = transform.position + transform.forward * 0.6f;
+            upOrDownRay.y += 1;
+            Debug.DrawRay(upOrDownRay, -Vector3.up * 3, Color.green);
+
+
+            RaycastHit firstHit;
+            RaycastHit slopeDirHit;
+            RaycastHit upOrDownHit;
+
+            Vector3 firstHitPosition = Vector3.zero;
+            Vector3 slopeDirPosition = Vector3.zero;
+            Vector3 upOrDownPosition = Vector3.zero;
+
+            if (Physics.Raycast(firstRay, -Vector3.up, out firstHit, 3, LayerMask.GetMask("Default")))
+            {
+                firstHitPosition = firstHit.point;
+
+            }
+            if (Physics.Raycast(upOrDownRay, -Vector3.up, out upOrDownHit, 3, LayerMask.GetMask("Default")))
+            {
+                upOrDownPosition = upOrDownHit.point;
+            }
+
+
+            Vector3 secondRay = firstHit.normal + transform.position;
+            Debug.DrawRay(transform.position, firstHit.normal, Color.green);
+            Debug.DrawRay(secondRay, -Vector3.up * 3, Color.green);
+
+            if (Physics.Raycast(secondRay, -Vector3.up, out slopeDirHit, 3, LayerMask.GetMask("Default")))
+                slopeDirPosition = slopeDirHit.point;
+
+            if (firstHitPosition.y > upOrDownPosition.y)
+                downSlope = true;
+            else
+                downSlope = false;
+
+            slideDirection = slopeDirPosition - firstHitPosition;
+
+            Debug.DrawRay(firstHitPosition, slideDirection * 2, groundSlopeAngle > maxSlopeWalkable && !isSliding ? Color.yellow : isSliding ? Color.red : Color.green);
         }
-        if (Physics.Raycast(upOrDownRay, -Vector3.up, out upOrDownHit, 3, LayerMask.GetMask("Default")))
-        {
-            upOrDownPosition = upOrDownHit.point;
-        }
 
-
-        Vector3 secondRay = firstHit.normal + transform.position;
-        Debug.DrawRay(secondRay, -Vector3.up * 3, Color.green);
-
-        if (Physics.Raycast(secondRay, -Vector3.up, out slopeDirHit, 3, LayerMask.GetMask("Default")))
-            slopeDirPosition = slopeDirHit.point;
-
-        if(firstHitPosition.y > upOrDownPosition.y)
-            downSlope = true;
-        else
-            downSlope = false;
-
-        slideDirection = slopeDirPosition - firstHitPosition;
-
-        Debug.DrawRay(firstHitPosition, slideDirection * 2, Color.green);
+    
     }
 
     //Ajuste la hauteur du player par rapport au sol
@@ -345,38 +357,95 @@ public class PlayerController : MonoBehaviour
             YVelocity = 1;
         if (YVelocity < -1)
             YVelocity = -1;
-
-
        
         float targetMoveAmount = Vector3.Magnitude(targetDir);
-        if (targetMoveAmount > 0 && (maxSlopeWalkable > groundSlopeAngle || downSlope == true))
+        if(groundSlopeAngle < minSlopeAffectSpeed)
         {
-            if (isSprinting == false)
-                moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
+            if (targetMoveAmount > 0)
+            {
+                if(obstacleForward == false)
+                {
+                    if (isSprinting == false)
+                        moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
+                    else
+                        moveAmount = Mathf.Lerp(moveAmount, 2, Time.unscaledDeltaTime * acceleration);
+                }
+                else
+                {
+                    moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * 200);
+                }
+               
+            }
             else
-                moveAmount = Mathf.Lerp(moveAmount, 2, Time.unscaledDeltaTime * acceleration);
+                moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * (isGrounded ? 5 : 200));
+
+            isSliding = false;
         }
         else
-            moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * (isGrounded || maxSlopeWalkable > groundSlopeAngle ? 5 : 200));
-
-        if(groundSlopeAngle > 0)
         {
-            float slopeMoveAmount = Remap(groundSlopeAngle, minSlopeAffectSpeed, maxSlopeWalkable, 0, 1);
+            float slopeMoveAmount = Remap(groundSlopeAngle, minSlopeAffectSpeed, maxSlopeWalkable, 1, 0);
 
             slopeMoveAmount = Mathf.Clamp(slopeMoveAmount, 0, 1) * targetMoveAmount;
 
             Debug.Log(slopeMoveAmount);
 
-            moveAmount = Mathf.Lerp(moveAmount, slopeMoveAmount, Time.deltaTime * 10);
+            if(groundSlopeAngle < maxSlopeWalkable)
+            {
+                if (obstacleForward == false)
+                {
+                    if (downSlope == false)
+                        moveAmount = Mathf.Lerp(moveAmount, slopeMoveAmount, Time.deltaTime * 5);
+                    else
+                        moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
+                }
+                else
+                {
+                    moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * 200);
+                }
+                   
+
+                isSliding = false;
+            }
+            else
+            {
+                if (isSliding == false)
+                    slideSpeed = 0;
+
+                moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * overSlopeDecceleration);
+
+                float targetSlideSpeed = Remap(groundSlopeAngle, maxSlopeWalkable, 90, slidingSpeedRange.x, slidingSpeedRange.y);
+
+                slideSpeed = Mathf.Lerp(slideSpeed, targetSlideSpeed, Time.deltaTime * slideingAcceleration);
+
+                if(moveAmount < 0.1f)
+                {
+                    moveAmount = 0;
+                    isSliding = true;
+                }               
+            }                  
         }
 
+        Quaternion tr;
+        if (isSliding == false)
+        {
+            tr = Quaternion.LookRotation(targetDir);
+            targetRotation = Quaternion.Slerp(
+                transform.rotation, tr,
+                Time.deltaTime * rotationSpeed);
+        }
+        else
+        {
+            Vector3 lookDirection = slideDirection;
+            lookDirection.y = 0;
 
-        Quaternion tr = Quaternion.LookRotation(targetDir);
-        targetRotation = Quaternion.Slerp(
-            transform.rotation, tr,
-            Time.deltaTime * rotationSpeed);
+            tr = Quaternion.LookRotation(lookDirection);
+            targetRotation = Quaternion.Slerp(
+                transform.rotation, tr,
+                Time.deltaTime * rotationSpeed);
+        }
+       
 
-        if (rawHorizontal == 0 && rawVertical == 0)
+        if (rawHorizontal == 0 && rawVertical == 0 && isSliding == false)
         {
             targetRotation = transform.rotation;
         }
@@ -400,7 +469,12 @@ public class PlayerController : MonoBehaviour
     //Set les transform du jouer comme la rotation et la position et garde le model au centre du parent
     void SetPlayerTransform()
     {
-        transform.position += anim.deltaPosition * speed;
+        if(isSliding == false)
+            transform.position += anim.deltaPosition * speed;
+        else
+            transform.position += slideDirection.normalized * Time.deltaTime * slideSpeed;
+           
+
         transform.rotation = targetRotation;
 
         anim.transform.localPosition = Vector3.zero;
@@ -418,18 +492,18 @@ public class PlayerController : MonoBehaviour
         anim.SetBool("IsGrounded", isGrounded);
     }
 
+    //Regarde si il y a un obstacle devant le player
     void CheckIfObstaceForward()
     {
         Vector3 dir = transform.forward;
-        Vector3 origin = transform.position;
-        origin.y += 1;
-        float dis = forwardObstacleCheckDistance;
+        Vector3 origin = transform.position; 
+        origin.y += 1.5f;
 
-        Debug.DrawRay(origin, dir * dis, Color.red);
+        Debug.DrawRay(origin, dir * forwardObstacleCheckDistance, Color.cyan);
         RaycastHit hit;
 
 
-        if (Physics.Raycast(origin, dir, out hit, dis))
+        if (Physics.Raycast(origin, dir, out hit, forwardObstacleCheckDistance))
         {
             if (hit.transform.gameObject.layer != LayerMask.GetMask("Player"))
             {
@@ -439,11 +513,7 @@ public class PlayerController : MonoBehaviour
         else
         {
             obstacleForward = false;
-        }
-      
-       
-
-        
+        } 
     }
 
     //Check quelle pied est devant pour pouvoir lancé les animation en conséquence du pied qui est en avant
