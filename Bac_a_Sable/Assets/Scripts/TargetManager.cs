@@ -3,10 +3,20 @@ using System.Collections.Generic;
 using UnityEngine;
 using Sirenix.OdinInspector;
 
-public class legermouvement : MonoBehaviour
+public class TargetManager : MonoBehaviour
 {
+    public static TargetManager instance;
+    TargetManager()
+    {
+        instance = this;
+    }
 
-   [PropertySpace(10,10)]
+
+    [PropertySpace(10, 10)]
+    public Canvas canvasReference;
+    Canvas canvasInstance;
+    HealthBar healthBarInstance;
+    public Vector3 healthBarOffset = new Vector3(0,2.2f,0);
     public GameObject objetReference;
     GameObject objectInstance;
     public Vector3 spawnPosition = new Vector3(1,0,1);
@@ -17,8 +27,7 @@ public class legermouvement : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        objectInstance = Instantiate(objetReference,spawnPosition,Quaternion.LookRotation(Vector3.up));
-        objectInstance.transform.localScale *= TargetScale;
+        SpawnTarget();
     }
 
     // Update is called once per frame
@@ -62,4 +71,29 @@ public class legermouvement : MonoBehaviour
 
       //if(pu de vie) spawn un autre ;
     }
+
+    public void SpawnTarget()
+    {
+        if (objectInstance != null)
+           Destroy(objectInstance);
+
+        objectInstance = Instantiate(objetReference, spawnPosition, Quaternion.LookRotation(Vector3.zero));
+        objectInstance.transform.localScale *= TargetScale;
+
+
+        canvasInstance = Instantiate(canvasReference,objectInstance.transform);
+        canvasInstance.transform.localPosition = healthBarOffset;
+        healthBarInstance = canvasInstance.GetComponentInChildren<HealthBar>();
+
+
+        TargetHealth newTargetHealth;
+        newTargetHealth = objectInstance.AddComponent<TargetHealth>();
+        newTargetHealth.healthBar = healthBarInstance;
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        
+    }
+
 }
