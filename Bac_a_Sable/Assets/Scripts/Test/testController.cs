@@ -4,9 +4,13 @@ using UnityEngine;
 
 public class testController : MonoBehaviour
 {
+
+
     public float speed = 2;
     public float acceleration = 3;
     public float rotationSpeed = 2;
+    public float jumpForce = 5;
+    
     float rotX;
     float rotY;
 
@@ -14,15 +18,18 @@ public class testController : MonoBehaviour
     float horizontal;
     Vector3 TargetDir;
 
+    Rigidbody rb;
+    
+
     void Start()
     {
-        
+        rb = GetComponent<Rigidbody>();
     }
 
     void Update()
     {
         Movement();
-        rotation();
+       // rotation();
     }
 
     void Movement()
@@ -34,6 +41,13 @@ public class testController : MonoBehaviour
         TargetDir.y = transform.position.y;
 
         transform.position = Vector3.Lerp(transform.position, TargetDir, Time.deltaTime * acceleration);
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            rb.AddForce(transform.TransformDirection(Vector3.up) * jumpForce);
+        }
+
+
     }
 
     void rotation()

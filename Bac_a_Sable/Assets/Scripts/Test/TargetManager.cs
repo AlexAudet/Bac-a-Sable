@@ -13,22 +13,17 @@ public class TargetManager : MonoBehaviour
 
 
     [PropertySpace(10, 10)]
-    public Canvas canvasReference;
     Canvas canvasInstance;
     HealthBar healthBarInstance;
+    GameObject objectInstance;
     public Vector3 healthBarOffset = new Vector3(0,2.2f,0);
     public GameObject objetReference;
-    GameObject objectInstance;
+    public Canvas canvasReference;
     public Vector3 spawnPosition = new Vector3(1,0,1);
-    public float speed = 1;
+    public int speed = 1;
     public float TargetScale = 1;
     public Vector3 motionRange = new Vector3(10, 10, 10);
     public Vector3 direction = new Vector3(1, 1, 1);
-    // Start is called before the first frame update
-    void Start()
-    {
-        SpawnTarget();
-    }
 
     // Update is called once per frame
 
@@ -39,7 +34,7 @@ public class TargetManager : MonoBehaviour
 
        if(pos.x>(spawnPosition.x+motionRange.x))
         {
-            direction.x = Random.Range(-1f, 0.01f);
+            direction.x = Random.Range(-1f, -0.01f);
         }
 
         if (pos.x < spawnPosition.x - motionRange.x)
@@ -49,7 +44,7 @@ public class TargetManager : MonoBehaviour
 
         if (pos.y > spawnPosition.y + motionRange.y)
         {
-            direction.y = Random.Range(-1f, 0.01f);
+            direction.y = Random.Range(-1f, -0.01f);
         }
 
         if (pos.y < spawnPosition.y - motionRange.y)
@@ -59,7 +54,7 @@ public class TargetManager : MonoBehaviour
 
         if (pos.z > spawnPosition.z + motionRange.z)
         {
-            direction.z = Random.Range(-1f, 0.01f);
+            direction.z = Random.Range(-1f, -0.01f);
         }
 
         if (pos.z < spawnPosition.z - motionRange.z)
@@ -91,9 +86,9 @@ public class TargetManager : MonoBehaviour
         newTargetHealth.healthBar = healthBarInstance;
     }
 
-    private void OnCollisionEnter(Collision collision)
+    public void AddSpeed()
     {
-        
+        speed++;
     }
 
 }

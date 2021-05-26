@@ -6,6 +6,7 @@ using Sirenix.OdinInspector;
 public class TargetHealth : MonoBehaviour
 {
     public HealthBar healthBar;
+    public Score score;
     
     public float maxHealth = 100;
     [ReadOnly]
@@ -37,6 +38,7 @@ public class TargetHealth : MonoBehaviour
     private void death()
     {
         TargetManager.instance.SpawnTarget();
+        score.AddPointsAndTime(TargetManager.instance.speed);
     }
 
 
