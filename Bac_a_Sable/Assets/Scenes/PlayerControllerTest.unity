@@ -4582,6 +4582,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   SprintInput: Sprint
+  LockOnInput: LockOn
   showDebug: 1
   lookTarget: {fileID: 2136226350}
   speed: 1
@@ -4608,6 +4609,7 @@ MonoBehaviour:
   rayOriginOffset1: {x: -0.2, y: 0.5, z: 0.16}
   rayOriginOffset2: {x: 0.2, y: 0.5, z: -0.16}
   handsSpace: 1
+  lockOn: 0
 --- !u!4 &1846822339
 Transform:
   m_ObjectHideFlags: 0
@@ -5307,7 +5309,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4580766925885248, guid: 2f3e27eecb190e44a9af50723c394274, type: 3}
       propertyPath: m_RootOrder
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4580766925885248, guid: 2f3e27eecb190e44a9af50723c394274, type: 3}
       propertyPath: m_LocalPosition.x

@@ -10,6 +10,7 @@ public class PlayerController : MonoBehaviour
   
     [Space(50)]
     public string SprintInput = "Sprint";
+    public string LockOnInput = "LockOn";
     [Space(50)]
     //si on affiche les Ray debug ou non
     public bool showDebug = false;                 
@@ -63,6 +64,7 @@ public class PlayerController : MonoBehaviour
     private Animator anim;
 
     private Quaternion targetRotation;
+    private Quaternion targetRotationLockOn;
 
     private Vector3 groundPosition;
     private Vector3 targetDir;
@@ -94,6 +96,7 @@ public class PlayerController : MonoBehaviour
     private bool downSlope;
     private bool isSliding;
     private bool rightFootForward;
+    public bool lockOn;
 
     private void Start()
     {
@@ -111,6 +114,7 @@ public class PlayerController : MonoBehaviour
         WhichFootForward();
         LookTarget();
         Sprint();
+        LockOn();
     }
     private void LateUpdate()
     {
@@ -372,7 +376,12 @@ public class PlayerController : MonoBehaviour
             if (targetMoveAmount > 0)
             {
                 if (isSprinting == false)
-                    moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
+                {
+                    if(lockOn == false)
+                        moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
+                    else
+                        moveAmount = Mathf.Lerp(moveAmount, vertical, Time.unscaledDeltaTime * rotationSpeed);
+                }                 
                 else
                     moveAmount = Mathf.Lerp(moveAmount, 2, Time.unscaledDeltaTime * acceleration);            
             }
@@ -392,12 +401,18 @@ public class PlayerController : MonoBehaviour
             if(groundSlopeAngle < maxSlopeWalkable)
             {
              
-                if (downSlope == false)
-                    moveAmount = Mathf.Lerp(moveAmount, slopeMoveAmount, Time.deltaTime * 5);
+                if(lockOn == false)
+                {
+                    if (downSlope == false)
+                        moveAmount = Mathf.Lerp(moveAmount, slopeMoveAmount, Time.deltaTime * overSlopeDecceleration);
+                    else
+                        moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount * Remap(groundSlopeAngle, minSlopeAffectSpeed, maxSlopeWalkable, 1, 2), Time.unscaledDeltaTime * rotationSpeed);
+                }
                 else
-                    moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
+                {
+                    moveAmount = Mathf.Lerp(moveAmount, vertical, Time.unscaledDeltaTime * acceleration);
+                }
 
-                   
 
                 isSliding = false;
             }
@@ -444,21 +459,29 @@ public class PlayerController : MonoBehaviour
         {
             targetRotation = transform.rotation;
         }
-
-        if ((tr.eulerAngles - transform.eulerAngles).sqrMagnitude > 100)
+        
+        if(lockOn == false)
         {
-            float targetTurnAmount = Vector3.Dot(transform.right, targetDir);
+            if ((tr.eulerAngles - transform.eulerAngles).sqrMagnitude > 100)
+            {
+                float targetTurnAmount = Vector3.Dot(transform.right, targetDir);
 
-            turnAmount = Mathf.Lerp(turnAmount, targetTurnAmount, Time.unscaledDeltaTime * 10);
+                turnAmount = Mathf.Lerp(turnAmount, targetTurnAmount, Time.unscaledDeltaTime * 10);
+            }
+            else
+                turnAmount = Mathf.Lerp(turnAmount, 0, Time.unscaledDeltaTime * 10);
+
+            if (turnAmount > 1)
+                turnAmount = 1;
+
+            if (turnAmount < -1)
+                turnAmount = -1;
         }
         else
-            turnAmount = Mathf.Lerp(turnAmount, 0, Time.unscaledDeltaTime * 10);
-
-        if (turnAmount > 1)
-            turnAmount = 1;
-
-        if (turnAmount < -1)
-            turnAmount = -1;
+        {
+            turnAmount = Mathf.Lerp(turnAmount, horizontal, Time.unscaledDeltaTime * rotationSpeed);      
+        }
+       
     }
 
     //Set les transform du jouer comme la rotation et la position et garde le model au centre du parent
@@ -469,8 +492,24 @@ public class PlayerController : MonoBehaviour
         else
             transform.position += slideDirection.normalized * Time.deltaTime * slideSpeed;
            
+        if(lockOn == false)
+             transform.rotation = targetRotation;
+        else
+        {
+            Vector3 loockRot = camTransform.forward;
+            loockRot.y = transform.position.y;
+            Quaternion tr = Quaternion.LookRotation(loockRot);
+            tr.z = 0;
+            targetRotationLockOn = Quaternion.Slerp(
+                transform.rotation, tr,
+                Time.deltaTime * rotationSpeed);
 
-        transform.rotation = targetRotation;
+         
+
+            transform.rotation = targetRotationLockOn;
+
+            lookTarget.position = Vector3.Lerp(lookTarget.position, (camTransform.position + camTransform.forward * 10), Time.deltaTime * 8);
+        }
 
         anim.transform.localPosition = Vector3.zero;
         anim.transform.localEulerAngles = Vector3.zero;
@@ -485,6 +524,7 @@ public class PlayerController : MonoBehaviour
         anim.SetFloat("YVelocity", YVelocity);
         anim.SetBool("RightFootForward", rightFootForward);
         anim.SetBool("IsGrounded", isGrounded);
+        anim.SetBool("LockOn", lockOn);
     }
 
     //Regarde si il y a un obstacle devant le player
@@ -510,7 +550,7 @@ public class PlayerController : MonoBehaviour
             Debug.DrawRay(heightCheckOrigin, Vector3.down * 5, Color.cyan);
             RaycastHit heightCheckHit;
 
-            // regarde la heuteur du mur
+            // regarde la hauteur du mur
             if (Physics.Raycast(heightCheckOrigin, Vector3.down, out heightCheckHit, 5))
             {
                 Vector3 leftNormal = Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
@@ -573,7 +613,6 @@ public class PlayerController : MonoBehaviour
                 //si les deux main sont dans le vire, le mur ne peut pas etre monté
                 if (leftHandFix == false && rightHandFix == false)
                 {
-                    climbable = false;
                     return;
                 }
 
@@ -628,6 +667,19 @@ public class PlayerController : MonoBehaviour
         }
         else
             isSprinting = false;
+    }
+
+    void LockOn()
+    {
+        if (Input.GetButton(LockOnInput))
+        {
+            if(isSprinting == false && isSliding == false)
+                lockOn = true;
+            else
+                lockOn = false;
+        }
+        else
+            lockOn = false;
     }
 
     float Remap(float value, float from1, float to1, float from2, float to2)
