@@ -4,11 +4,14 @@ using UnityEngine;
 
 public class LookAroundCamera : MonoBehaviour
 {
+
+	
+	
 	public enum RotationAxes { MouseXAndY = 0, MouseX = 1, MouseY = 2 }
 	public RotationAxes axes = RotationAxes.MouseXAndY;
 	public float sensitivityX = 15F;
 	public float sensitivityY = 15F;
-
+	public bool lockCursor = true;
 	public float minimumX = -360F;
 	public float maximumX = 360F;
 
@@ -120,10 +123,14 @@ public class LookAroundCamera : MonoBehaviour
 
 	void Start()
 	{
+		Cursor.lockState = lockCursor ? CursorLockMode.Locked : CursorLockMode.None;
+		Cursor.visible = lockCursor ? false : true;
+	
 		Rigidbody rb = GetComponent<Rigidbody>();
 		if (rb)
 			rb.freezeRotation = true;
 		originalRotation = transform.localRotation;
+
 	}
 
 	public static float ClampAngle(float angle, float min, float max)

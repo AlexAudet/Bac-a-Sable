@@ -39,7 +39,7 @@ public class TargetManager : MonoBehaviour
 
        if(pos.x>(spawnPosition.x+motionRange.x))
         {
-            direction.x = Random.Range(-1f, 0.01f);
+            direction.x = Random.Range(-1f, -0.01f);
         }
 
         if (pos.x < spawnPosition.x - motionRange.x)
@@ -49,7 +49,7 @@ public class TargetManager : MonoBehaviour
 
         if (pos.y > spawnPosition.y + motionRange.y)
         {
-            direction.y = Random.Range(-1f, 0.01f);
+            direction.y = Random.Range(-1f, -0.01f);
         }
 
         if (pos.y < spawnPosition.y - motionRange.y)
@@ -59,7 +59,7 @@ public class TargetManager : MonoBehaviour
 
         if (pos.z > spawnPosition.z + motionRange.z)
         {
-            direction.z = Random.Range(-1f, 0.01f);
+            direction.z = Random.Range(-1f, -0.01f);
         }
 
         if (pos.z < spawnPosition.z - motionRange.z)
@@ -89,11 +89,6 @@ public class TargetManager : MonoBehaviour
         TargetHealth newTargetHealth;
         newTargetHealth = objectInstance.AddComponent<TargetHealth>();
         newTargetHealth.healthBar = healthBarInstance;
-    }
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        
     }
 
 }
