@@ -39,6 +39,8 @@ namespace RootMotion.Demos
 
             // Update Left arm IK
             leftArmIK.solver.Update();
+
+           
         }
     }
 }
