@@ -42,8 +42,7 @@ public class PlayerController : MonoBehaviour
     public Vector2 slidingSpeedRange = new Vector2(2,15);
     
    
-    [Header("Slope Settings")]
-    public LayerMask castingMask;                  
+    [Header("Slope Settings")]               
     public float startDistanceFromBottom = 0.2f;   
     public float sphereCastRadius = 0.25f;
     public float sphereCastDistance = 0.75f;       
@@ -61,14 +60,13 @@ public class PlayerController : MonoBehaviour
     private Transform rightFoot;
     private Animator anim;
 
-    public Quaternion targetRotation;
     public Quaternion targetRotationLockOn;
 
     private Vector3 groundPosition;
-    private Vector3 targetDir;
+    [HideInInspector] public Vector3 targetDir;
     private Vector3 rawTargetDir;
     private Vector3 lastPos;
-    [HideInInspector] public Vector3 slideDirection;
+    Vector3 slideDirection;
     private Vector3 leftHandPos;
     private Vector3 rightHandPos;
 
@@ -77,11 +75,8 @@ public class PlayerController : MonoBehaviour
 
     private float YVelocity;
 
-    private float slideSpeed;
-    private float groundSlopeAngle = 0f;           
+    float slideSpeed;
 
-    private float dotNewDirection;
-    private float turnDirection;
 
     private float horizontal;
     private float vertical;
@@ -241,12 +236,13 @@ public class PlayerController : MonoBehaviour
     }
 
     //Check l'inclinaison du sol et determine si on la monde ou descent
-    public void CheckGroundSlope(Vector3 origin)
+    public OnSlopeData slopeDataResult = new OnSlopeData();
+    public OnSlopeData CheckGroundSlope(Vector3 origin)
     {
         RaycastHit hit;
-        if (Physics.SphereCast(origin, sphereCastRadius, Vector3.down, out hit, sphereCastDistance, castingMask))
+        if (Physics.SphereCast(origin, sphereCastRadius, Vector3.down, out hit, sphereCastDistance))
         {
-            groundSlopeAngle = Vector3.Angle(hit.normal, Vector3.up);
+            slopeDataResult.slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
             Vector3 temp = Vector3.Cross(hit.normal, Vector3.down);
         }
 
@@ -266,18 +262,18 @@ public class PlayerController : MonoBehaviour
 
                 float angleTwo = Vector3.Angle(slopeHit2.normal, Vector3.up);
 
-                float[] tempArray = new float[] { groundSlopeAngle, angleOne, angleTwo };
+                float[] tempArray = new float[] { slopeDataResult.slopeAngle, angleOne, angleTwo };
                 System.Array.Sort(tempArray);
-                groundSlopeAngle = tempArray[1];
+                slopeDataResult.slopeAngle = tempArray[1];
             }
             else
             {
-                float average = (groundSlopeAngle + angleOne) / 2;
-                groundSlopeAngle = average;
+                float average = (slopeDataResult.slopeAngle + angleOne) / 2;
+                slopeDataResult.slopeAngle = average;
             }
         }
 
-        if (groundSlopeAngle > 1)
+        if (slopeDataResult.slopeAngle > 1)
         {
             Vector3 firstRay = transform.position + transform.forward * 0.2f;
             firstRay.y += 1;
@@ -317,10 +313,13 @@ public class PlayerController : MonoBehaviour
             else
                 downSlope = false;
 
-            slideDirection = slopeDirPosition - firstHitPosition;
+            slopeDataResult.slopeDirection = slopeDirPosition - firstHitPosition;
+            slopeDataResult.slopeDotDirection = Vector3.Dot(transform.forward, slopeDataResult.slopeDirection);
 
-            Debug.DrawRay(firstHitPosition, slideDirection * 2, groundSlopeAngle > maxSlopeWalkable && !isSliding ? Color.yellow : isSliding ? Color.red : Color.green);
+            Debug.DrawRay(firstHitPosition, slopeDataResult.slopeDirection * 2, slopeDataResult.slopeAngle > maxSlopeWalkable && !isSliding ? Color.yellow : isSliding ? Color.red : Color.green);       
         }
+
+        return slopeDataResult;
     }
 
     #endregion
@@ -328,18 +327,6 @@ public class PlayerController : MonoBehaviour
     //Get les variable des géré par les input;
     void GetInput()
     {
-        rawHorizontal = Input.GetAxisRaw("Horizontal");
-        rawVertical = Input.GetAxisRaw("Vertical");
-        horizontal = Input.GetAxis("Horizontal");
-        vertical = Input.GetAxis("Vertical");
-
-        rawTargetDir = camTransform.forward * rawVertical;
-        rawTargetDir += camTransform.right * rawHorizontal;
-        rawTargetDir.y = 0;
-
-        targetDir = camTransform.forward * vertical;
-        targetDir += camTransform.right * horizontal;
-        targetDir.y = 0;
 
         if (Input.GetButton(SprintInput))
         {
@@ -362,8 +349,7 @@ public class PlayerController : MonoBehaviour
     //Ajuste la hauteur du player par rapport au sol
     public void AdjustPlayerHeightFromGround()
     {      
-        Vector3 heightPos;
-        heightPos = transform.position;
+        Vector3 heightPos = transform.position;
         heightPos.y = groundPosition.y;
         transform.position = Vector3.Lerp(transform.position, heightPos, Time.deltaTime * heightFromGroundAdaptation);
     }
@@ -376,24 +362,23 @@ public class PlayerController : MonoBehaviour
     }
 
     //Check quelle pied est devant pour pouvoir lancé les animation en conséquence du pied qui est en avant
-    void WhichFootForward()
+    public bool RightFootForward()
     {
+        bool result = false;
+
         Vector3 lf_relativPos = transform.InverseTransformPoint(leftFoot.position);
         Vector3 rf_relativPos = transform.InverseTransformPoint(rightFoot.position);
 
-        rightFootForward = false;
+        result = false;
         if (rf_relativPos.z > lf_relativPos.z)
-            rightFootForward = true;
+            result = true;
+
+        return result;
     }
 
     //Envoie les variable calculé a l'Animator pour joué avec les blendTrees
     void SetAnimationVariable()
-    {
-        anim.SetFloat("Forward", moveAmount);
-        anim.SetFloat("Turn", turnAmount);
-        anim.SetFloat("DotDirection", dotNewDirection);
-        anim.SetFloat("YVelocity", YVelocity);
-        anim.SetBool("RightFootForward", rightFootForward);
+    {   
         anim.SetBool("IsGrounded", isGrounded);
         anim.SetBool("LockOn", lockOn);
     }
@@ -401,19 +386,8 @@ public class PlayerController : MonoBehaviour
 
 
     //calcul les variable comme le moveAmount ou le turnAmount pour pouvoir les envoyer a l'animator
-    void ProcessAnimationVariable()
-    {
-        dotNewDirection = Vector3.Dot(rawTargetDir, transform.forward);
-        turnDirection = Vector3.Dot(transform.right, rawTargetDir);
-
-        YVelocity = (transform.position - lastPos).magnitude;
-        lastPos = transform.position;
-        if (YVelocity > 1)
-            YVelocity = 1;
-        if (YVelocity < -1)
-            YVelocity = -1;
-       
-        float targetMoveAmount = Vector3.Magnitude(targetDir);
+    void m()
+    {    
         if(groundSlopeAngle < minSlopeAffectSpeed)
         {
             if (targetMoveAmount > 0)
@@ -421,12 +395,12 @@ public class PlayerController : MonoBehaviour
                 if (isSprinting == false)
                 {
                     if(lockOn == false)
-                        moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * acceleration);
+                       
                     else
                         moveAmount = Mathf.Lerp(moveAmount, vertical, Time.unscaledDeltaTime * rotationSpeed);
                 }                 
                 else
-                    moveAmount = Mathf.Lerp(moveAmount, 2, Time.unscaledDeltaTime * acceleration);            
+                             
             }
             else
                 moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * (isGrounded ? 5 : 200));
@@ -439,17 +413,11 @@ public class PlayerController : MonoBehaviour
 
             slopeMoveAmount = Mathf.Clamp(slopeMoveAmount, 0, 1) * targetMoveAmount;
 
-            Debug.Log(slopeMoveAmount);
-
             if(groundSlopeAngle < maxSlopeWalkable)
             {
              
                 if(lockOn == false)
                 {
-                    if (downSlope == false)
-                        moveAmount = Mathf.Lerp(moveAmount, slopeMoveAmount, Time.deltaTime * overSlopeDecceleration);
-                    else
-                        moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount * Remap(groundSlopeAngle, minSlopeAffectSpeed, maxSlopeWalkable, 1, 2), Time.unscaledDeltaTime * rotationSpeed);
                 }
                 else
                 {
@@ -461,14 +429,9 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                if (isSliding == false)
-                    slideSpeed = 0;
 
-                moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * overSlopeDecceleration);
+               
 
-                float targetSlideSpeed = Remap(groundSlopeAngle, maxSlopeWalkable, 90, slidingSpeedRange.x, slidingSpeedRange.y);
-
-                slideSpeed = Mathf.Lerp(slideSpeed, targetSlideSpeed, Time.deltaTime * slideingAcceleration);
 
                 if(moveAmount < 0.1f)
                 {
@@ -478,57 +441,23 @@ public class PlayerController : MonoBehaviour
             }                  
         }
 
-        Quaternion tr;
-        if (isSliding == false)
-        {
-            tr = Quaternion.LookRotation(targetDir);
-            targetRotation = Quaternion.Slerp(
-                transform.rotation, tr,
-                Time.deltaTime * rotationSpeed);
-        }
-        else
-        {
-            Vector3 lookDirection = slideDirection;
-            lookDirection.y = 0;
 
-            tr = Quaternion.LookRotation(lookDirection);
-            targetRotation = Quaternion.Slerp(
-                transform.rotation, tr,
-                Time.deltaTime * rotationSpeed);
-        }
        
 
-        if (rawHorizontal == 0 && rawVertical == 0 && isSliding == false)
-        {
-            targetRotation = transform.rotation;
-        }
-        
+
         if(lockOn == false)
         {
-            if ((tr.eulerAngles - transform.eulerAngles).sqrMagnitude > 100)
-            {
-                float targetTurnAmount = Vector3.Dot(transform.right, targetDir);
-
-                turnAmount = Mathf.Lerp(turnAmount, targetTurnAmount, Time.unscaledDeltaTime * 10);
-            }
-            else
-                turnAmount = Mathf.Lerp(turnAmount, 0, Time.unscaledDeltaTime * 10);
-
-            if (turnAmount > 1)
-                turnAmount = 1;
-
-            if (turnAmount < -1)
-                turnAmount = -1;
+           
         }
         else
         {
-            turnAmount = Mathf.Lerp(turnAmount, horizontal, Time.unscaledDeltaTime * rotationSpeed);      
+            
         }
        
     }
 
     //Regarde si il y a un obstacle devant le player
-    void CheckIfObstaceForward()
+    public void CheckIfObstaceForward()
     {
         Vector3 forwardCheckOrigin = transform.position;
         forwardCheckOrigin.y += 1;
@@ -661,6 +590,23 @@ public class PlayerController : MonoBehaviour
      
     }
 
+    public Quaternion TargetRotation(Vector3 targetDir)
+    {
+        Quaternion targetRotation = Quaternion.identity;
+        if (Input.GetAxisRaw("Horizontal") == 0 && Input.GetAxisRaw("Vertical") == 0)
+        {
+            targetRotation = transform.rotation;
+        }
+        else
+        {
+            Quaternion tr = Quaternion.LookRotation(targetDir);
+            targetRotation = Quaternion.Slerp(
+               transform.rotation, tr,
+                Time.deltaTime * rotationSpeed);
+        }
+
+        return targetRotation;
+    }
 
 
     //Set la position du LookTarget pour que la tete du player tourne dans la direction avec le component LookAtIk
@@ -678,3 +624,9 @@ public class PlayerController : MonoBehaviour
     }
 }
 
+public class OnSlopeData
+{
+    public float slopeAngle;
+    public Vector3 slopeDirection;
+    public float slopeDotDirection;
+}
