@@ -37,12 +37,18 @@ public class CameraController : MonoBehaviour
 	// When to update the camera?
 	[System.Serializable]
 	public enum UpdateMode
-		{
+	{
 			Update,
 			FixedUpdate,
 			LateUpdate,
 			FixedLateUpdate
-		}
+	}
+
+	public static CameraController Instance;
+    CameraController()
+    {
+		Instance = this;
+    }
 
 	public Transform target; // The target Transform to follow
 	public Transform rotationSpace; // If assigned, will use this Transform's rotation as the rotation space instead of the world space. Useful with spherical planets.

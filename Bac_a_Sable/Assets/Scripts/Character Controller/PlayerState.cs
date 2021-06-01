@@ -26,13 +26,12 @@ public class PlayerState
 
     public virtual void Enter() { stage = EVENT.UPDATE; }
     public virtual void Update() { stage = EVENT.UPDATE; }
-    public virtual void FixedUpdate() { stage = EVENT.UPDATE; }
     public virtual void Exit() { stage = EVENT.EXIT; }
 
     public PlayerState Process()
     {
         if (stage == EVENT.ENTER) Enter();
-        if (stage == EVENT.UPDATE) Update(); FixedUpdate();
+        if (stage == EVENT.UPDATE) Update();
         if (stage == EVENT.EXIT)
         {
             Exit();
@@ -53,50 +52,60 @@ public class NormalMovement : PlayerState
     public NormalMovement(PlayerController _player, Animator _anim)
         : base(_player, _anim){ }
 
-    public override void Enter()
-    {
-        base.Enter();
-    }
-
+    OnSlopeData slopeData = new OnSlopeData();
     Vector3 targetDir;
-    float vertical;
-    float horizontal;
+    Vector3 lastPosition;
+    Vector3 currentVelocity;
     float targetMoveAmount;
     float moveAmount;
     float turnAmount;
     bool sprinting;
 
-    OnSlopeData slopeData = new OnSlopeData();
+    public override void Enter()
+    {
+        CameraController.Instance.updateMode = CameraController.UpdateMode.LateUpdate;
+        lastPosition = player.transform.position;
+        player.rigid.isKinematic = true;
+        base.Enter();
+    }
+
     public override void Update()
     {
+        player.LookTarget();
+        targetDir = player.TargetDirection();
+        sprinting = player.Sprint();
 
-        horizontal = Input.GetAxis("Horizontal");
-        vertical = Input.GetAxis("Vertical");
-        sprinting = Input.GetButton(player.SprintInput);
 
-        targetDir = player.camTransform.forward * vertical;
-        targetDir += player.camTransform.right * horizontal;
-        targetDir.y = 0;
 
-        if (!sprinting)
-            targetMoveAmount = Vector3.Magnitude(targetDir);
-        else
-            targetMoveAmount = 2;
-
-        if (slopeData.slopeAngle < player.minSlopeAffectSpeed)
-        {           
-            moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.unscaledDeltaTime * player.acceleration);          
+        if (player.TouchMovingInput())
+        {
+            if (!sprinting)
+                targetMoveAmount = Vector3.Magnitude(targetDir);
+            else
+                targetMoveAmount = 2;
         }
         else
         {
-            float slopeMoveAmount = Remap(slopeData.slopeAngle, player.minSlopeAffectSpeed, player.maxSlopeWalkable, 1, 0);
+            targetMoveAmount = 0;
+        }
 
-            slopeMoveAmount = Mathf.Clamp(slopeMoveAmount, 0, 1) * targetMoveAmount;
 
+        if (slopeData.slopeAngle < player.minSlopeAffectSpeed)
+        {
+           
+            moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.deltaTime * player.acceleration);
+            
+        }
+        else
+        {
+            float slopDotDirection = Remap(Mathf.Clamp(slopeData.slopeDotDirection, -1, 0), -1, 0, 0, 1);
+            float slopeMoveAmount = Mathf.Clamp(Remap(slopeData.slopeAngle, player.minSlopeAffectSpeed, player.maxSlopeWalkable, 1, 0), 0, 1);        
+            slopeMoveAmount = Mathf.Clamp(slopeMoveAmount + slopDotDirection, 0, 1);
+            slopeMoveAmount *= targetMoveAmount;
 
             if (slopeData.slopeAngle < player.maxSlopeWalkable)
             {
-                if (downSlope == false)
+                if (slopeData.slopeDotDirection < 1)
                     moveAmount = Mathf.Lerp(moveAmount, slopeMoveAmount, Time.deltaTime * player.overSlopeDecceleration);
                 else
                     moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount * Remap(slopeData.slopeAngle, player.minSlopeAffectSpeed, player.maxSlopeWalkable, 1, 2), Time.unscaledDeltaTime * player.rotationSpeed);
@@ -104,6 +113,14 @@ public class NormalMovement : PlayerState
             else
             {
                 moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * player.overSlopeDecceleration);
+
+                if (moveAmount < 0.1f)
+                {
+                    moveAmount = 0;
+
+                    nextState = new Sliding(player, anim);
+                    stage = EVENT.EXIT;
+                }
             }
         }
 
@@ -114,26 +131,48 @@ public class NormalMovement : PlayerState
             turnAmount = Mathf.Lerp(turnAmount, targetTurnAmount, Time.unscaledDeltaTime * 10);
         }
         else
+        {
             turnAmount = Mathf.Lerp(turnAmount, 0, Time.unscaledDeltaTime * 10);
+        }
+           
 
-        if (turnAmount > 1)
-            turnAmount = 1;
+        player.transform.position += anim.deltaPosition * (sprinting ? player.sprintSpeed : player.speed);
+        player.transform.rotation = player.TargetRotation(targetDir);
 
-        if (turnAmount < -1)
-            turnAmount = -1;
+  
 
-
-        player.transform.position += anim.deltaPosition * player.speed;
-        player.transform.rotation = player.TargetRotation(player.targetDir);
-
+        slopeData = player.CheckGroundSlope(player.transform.position);
+        anim.SetBool("IsGrounded", player.grounded);
         anim.SetBool("RightFootForward", player.RightFootForward());
         anim.SetFloat("Forward", moveAmount);
         anim.SetFloat("Turn", turnAmount);
 
-    }
-    public override void FixedUpdate()
-    {
-        slopeData = player.CheckGroundSlope(player.transform.position);
+
+        currentVelocity = (player.transform.position - lastPosition) / Time.fixedDeltaTime;
+        lastPosition = player.transform.position;
+
+        if (player.Jump())
+        {
+            nextState = new Jump(player, anim, moveAmount, sprinting);
+            stage = EVENT.EXIT;
+        }
+
+
+        player.CheckIfGrounded();
+        if (player.grounded == false)
+        {
+            player.rigid.isKinematic = false;
+            anim.SetBool("IsGrounded", false);
+            CameraController.Instance.updateMode = CameraController.UpdateMode.FixedUpdate;
+
+            currentVelocity = player.transform.forward * 3 * Mathf.Clamp(moveAmount, 0.5f, 2) * (sprinting ? player.sprintSpeed : player.speed);
+       
+            currentVelocity.y += 3;
+            player.rigid.AddForce(currentVelocity, ForceMode.VelocityChange);
+            nextState = new NotGrounded(player, anim);
+            stage = EVENT.EXIT;
+        }
+
     }
 
     public override void Exit()
@@ -150,6 +189,7 @@ public class LockOnMovement : PlayerState
 
     public override void Enter()
     {
+        anim.SetBool("LockOn", true);
         base.Enter();
     }
 
@@ -171,24 +211,17 @@ public class LockOnMovement : PlayerState
 
         Vector3 loockRot = player.camTransform.forward;
         loockRot.y = player.transform.position.y;
-        Quaternion rot = player.TargetRotation(player.camTransform.forward);
-  
-        Quaternion tr = Quaternion.LookRotation(loockRot);
-        tr.z = 0;
-        player.targetRotationLockOn = Quaternion.Slerp(
-            player.transform.rotation, tr,
-            Time.deltaTime * player.rotationSpeed);
- 
+        player.transform.rotation = player.TargetRotation(loockRot);
 
-        turnAmount = Mathf.Lerp(turnAmount, horizontal, Time.unscaledDeltaTime * player.rotationSpeed);
-
-        player.transform.rotation = player.targetRotationLockOn;
+        moveAmount = Mathf.Lerp(moveAmount, vertical, Time.unscaledDeltaTime * player.acceleration);
+        turnAmount = Mathf.Lerp(turnAmount, horizontal, Time.unscaledDeltaTime * player.acceleration);
 
         player.lookTarget.position = Vector3.Lerp(player.lookTarget.position, (player.camTransform.position + player.camTransform.forward * 10), Time.deltaTime * 8);
     }
 
     public override void Exit()
     {
+        anim.SetBool("LockOn", false);
         base.Exit();
     }
 }
@@ -198,31 +231,32 @@ public class Sliding : PlayerState
     public Sliding(PlayerController _player, Animator _anim)
         : base(_player, _anim){}
 
+    OnSlopeData slopeData;
+    float slideSpeed;
+    float targetSlideSpeed;
 
     public override void Enter()
     {
-        float targetSlideSpeed = Remap(groundSlopeAngle, maxSlopeWalkable, 90, slidingSpeedRange.x, slidingSpeedRange.y);
-
+        
         base.Enter();
     }
 
 
     public override void Update()
     {
+        slopeData = player.CheckGroundSlope(player.transform.position);
 
-  
+        targetSlideSpeed = Remap(slopeData.slopeAngle, player.maxSlopeWalkable, 90, player.slidingSpeedRange.x, player.slidingSpeedRange.y);
 
-        slideSpeed = Mathf.Lerp(slideSpeed, targetSlideSpeed, Time.deltaTime * slideingAcceleration);
 
-        player.transform.position += slideDirection.normalized * Time.deltaTime * slideSpeed;
+        slideSpeed = Mathf.Lerp(slideSpeed, targetSlideSpeed, Time.deltaTime * player.slideingAcceleration);
 
-        Vector3 lookDirection = slideDirection;
+        player.transform.position += slopeData.slopeDirection.normalized * Time.deltaTime * slideSpeed;
+
+        Vector3 lookDirection = slopeData.slopeDirection;
         lookDirection.y = 0;
 
-        Quaternion tr = Quaternion.LookRotation(lookDirection);
-        targetRotation = Quaternion.Slerp(
-            player.transform.rotation, tr,
-            Time.deltaTime * player.rotationSpeed);
+        player.transform.rotation = player.TargetRotation(lookDirection, true);
     }
 
     public override void Exit()
@@ -236,28 +270,116 @@ public class NotGrounded : PlayerState
     public NotGrounded(PlayerController _player, Animator _anim)
         : base(_player, _anim){}
 
+    Vector3 targetDir;
+
+    float targetMoveAmount;
+    float moveAmount;
+    float timer;
 
     public override void Enter()
     {
+        CameraController.Instance.updateMode = CameraController.UpdateMode.FixedUpdate;
+        player.rigid.isKinematic = false;
+        anim.SetBool("IsGrounded", false);
         base.Enter();
     }
-
-
     public override void Update()
     {
-        YVelocity = (transform.position - lastPos).magnitude;
-        lastPos = transform.position;
-        if (YVelocity > 1)
-            YVelocity = 1;
-        if (YVelocity < -1)
-            YVelocity = -1;
+        targetDir = player.TargetDirection();
+        if (player.TouchMovingInput())
+            targetMoveAmount = Vector3.Magnitude(targetDir);
+        else
+            targetMoveAmount = 0;
 
-        anim.SetFloat("YVelocity", YVelocity);
+        moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.deltaTime * player.acceleration);
 
+        player.rigid.AddForce(new Vector3(0, player.gravityForce, 0), ForceMode.Acceleration);
+
+        timer += Time.deltaTime;
+
+        anim.SetFloat("TimeFall", timer);
+        anim.SetFloat("Forward", moveAmount);
+
+        player.CheckIfGrounded();
+        if (player.grounded)
+        {
+            nextState = new NormalMovement(player, anim);
+            stage = EVENT.EXIT;
+        }
     }
 
     public override void Exit()
     {
+        anim.SetBool("IsGrounded", true);
+        base.Exit();
+    }
+}
+
+public class Jump : PlayerState
+{
+    public Jump(PlayerController _player, Animator _anim, float _moveAmount, bool _sprinting)
+        : base(_player, _anim) { moveAmount = _moveAmount; sprinting = _sprinting; }
+
+    bool sprinting;
+
+    float targetMoveAmount;
+    float moveAmount;
+    float timer;
+
+    Vector3 targetDir;
+    Vector3 jumpDirection;
+
+    public override void Enter()
+    {   
+        CameraController.Instance.updateMode = CameraController.UpdateMode.FixedUpdate;
+        player.rigid.isKinematic = false;
+
+        anim.SetBool("Jump", true);
+        anim.SetBool("IsGrounded", false);
+
+        jumpDirection = Vector3.up * player.jumpForce;
+        jumpDirection += player.transform.forward * 3 * (moveAmount * 2) * (sprinting ? player.sprintSpeed : player.speed);
+
+        player.rigid.AddForce(jumpDirection, ForceMode.VelocityChange);
+
+        base.Enter();
+    }
+    public override void Update()
+    {
+        targetDir = player.TargetDirection();
+        if (player.TouchMovingInput())
+            targetMoveAmount = Vector3.Magnitude(targetDir);
+        else
+            targetMoveAmount = 0;
+
+        moveAmount = Mathf.Lerp(moveAmount, targetMoveAmount, Time.deltaTime * player.acceleration);
+
+        player.rigid.AddForce(new Vector3(0, player.gravityForce, 0), ForceMode.Acceleration);
+
+        anim.SetFloat("YVelocity", player.rigid.velocity.y);
+        anim.SetFloat("Forward", moveAmount);
+
+        timer += Time.deltaTime;
+
+        if (player.rigid.velocity.y < -0.2f || timer >= 0.2f)
+        {
+            player.CheckIfGrounded();
+            if (player.grounded)
+            {
+                Debug.Log(anim.GetFloat("Forward"));
+                anim.SetBool("Jump", false);
+                nextState = new NormalMovement(player, anim);
+                stage = EVENT.EXIT;
+            }
+        }
+       
+               
+    }
+
+    public override void Exit()
+    {
+        anim.SetBool("Jump", false);
+
         base.Exit();
     }
 }

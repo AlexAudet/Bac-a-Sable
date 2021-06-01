@@ -9,6 +9,7 @@ public class PlayerController : MonoBehaviour
     [Space(50)]
     public string SprintInput = "Sprint";
     public string LockOnInput = "LockOn";
+    public string JumpImput = "Jump";
     [Space(50)]
     //si on affiche les Ray debug ou non
     public bool showDebug = false;                 
@@ -26,9 +27,11 @@ public class PlayerController : MonoBehaviour
     public float heightFromGroundAdaptation = 20;
     //la force de la gravité si le joueur ne touche pas le sol
     public float gravityForce = 9;
-
+    [Space(20)]
+    public float jumpForce = 3;
+    [Space(20)]
     // la distance que le player check si il est face a un mur ou non
-    public float forwardObstacleCheckDistance = 0.5f;
+    public float forwardObstacleCheckDistance = 3f;
     // A partir de quelle distance le player est considéré dans les airs
     public float groundCheckDistance = 0.5f;
     // A partir de quelle distance le player est considéré dans les airs
@@ -55,79 +58,39 @@ public class PlayerController : MonoBehaviour
 
 
     #region privateVariable
+
+    [HideInInspector] public PlayerState state;
+    [HideInInspector] public OnSlopeData slopeDataResult = new OnSlopeData();
     [HideInInspector] public Transform camTransform;
+    [HideInInspector] public Rigidbody rigid;
     private Transform leftFoot;
     private Transform rightFoot;
     private Animator anim;
 
-    public Quaternion targetRotationLockOn;
 
-    private Vector3 groundPosition;
-    [HideInInspector] public Vector3 targetDir;
-    private Vector3 rawTargetDir;
-    private Vector3 lastPos;
-    Vector3 slideDirection;
-    private Vector3 leftHandPos;
-    private Vector3 rightHandPos;
-
-    private float moveAmount;
-    private float turnAmount;
-
-    private float YVelocity;
-
-    float slideSpeed;
-
-
-    private float horizontal;
-    private float vertical;
-    private float rawHorizontal;
-    private float rawVertical;
-
-    private bool obstacleForward;
-    private float obstacleDotProduct;
-    private bool isSprinting;
-    private bool isGrounded;
-    private bool downSlope;
-    private bool isSliding;
-    private bool rightFootForward;
-    private bool lockOn;
-
-    private bool leftHandFix = false;
-    private bool rightHandFix = false;
     #endregion
 
     private void Start()
     {
         camTransform = Camera.main.transform;
         anim = GetComponentInChildren<Animator>();
+        rigid = GetComponent<Rigidbody>();
 
         leftFoot = anim.GetBoneTransform(HumanBodyBones.LeftFoot);
         rightFoot = anim.GetBoneTransform(HumanBodyBones.RightFoot);
+
+        state = new NormalMovement(this, anim);
     }
 
     private void Update()
     {
-        GetInput();
-        ProcessAnimationVariable();
-        CheckIfObstaceForward();
-        WhichFootForward();
-        LookTarget();
-
-
-     
+        state = state.Process();
+        StayInConrtoller(); 
     }
-    private void LateUpdate()
-    {
-        AdjustPlayerHeightFromGround();
-        SetAnimationVariable();
-        StayInConrtoller();
-      
-    }
+
     private void FixedUpdate()
     {
-        CheckIfGrounded();
-        if (isGrounded)
-            CheckGroundSlope(transform.position);
+
     }
 
 
@@ -159,10 +122,251 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    #region FixedUpdate Method
-    //Check si le player touche au sol
-    void CheckIfGrounded()
+
+    //Regarde si on est en train de viser
+    public bool OnAiming()
     {
+        return Input.GetButton(LockOnInput);
+    }
+
+    //Regarde si on est en train de sauter
+    public bool Jump()
+    {
+        return Input.GetButtonDown(JumpImput);
+    }
+
+    //Regarde si on est en train de sprinter
+    public bool Sprint()
+    {
+        return Input.GetButton(SprintInput);
+    }
+
+
+    // Regarde si il y a un obstacle devant le player
+    private bool leftHandFix = false;
+    private bool rightHandFix = false;
+    private Vector3 leftHandPos;
+    private Vector3 rightHandPos;
+    private float obstacleDotProduct;
+    private bool obstacleForward;
+    public bool ObstacleForward()
+    {
+        obstacleForward = false;
+
+        Vector3 forwardCheckOrigin = transform.position;
+        forwardCheckOrigin.y += 1;
+
+        Debug.DrawRay(forwardCheckOrigin, transform.forward * forwardObstacleCheckDistance, Color.cyan);
+
+  
+        Vector3 forwardCheckDirection = transform.forward;
+
+        if(leftHandFix && rightHandFix)
+        {
+            if (Vector3.Distance(transform.position, leftHandPos) > Vector3.Distance(transform.position, rightHandPos))
+                forwardCheckDirection = Vector3.Lerp(-transform.right, transform.forward, obstacleDotProduct);
+            else
+                forwardCheckDirection = Vector3.Lerp(transform.right, transform.forward, obstacleDotProduct);
+            forwardCheckDirection = Vector3.Lerp(forwardCheckDirection, transform.forward, 0.5f);
+        }
+     
+
+        Debug.DrawRay(forwardCheckOrigin, forwardCheckDirection * 2, Color.cyan);
+
+
+        RaycastHit forwardCheckHit;
+        // regarde devant le joueur si il y a un mur
+        if (Physics.Raycast(forwardCheckOrigin, forwardCheckDirection, out forwardCheckHit, forwardObstacleCheckDistance))
+        {
+            obstacleForward = true;
+            obstacleDotProduct = Vector3.Dot(-forwardCheckHit.normal, transform.forward);
+
+            //Si l'angle entre le personnage et le mur est trop grand annule
+            if (obstacleDotProduct > 0.3f)
+            {
+                Vector3 heightCheckOrigin = forwardCheckHit.point + -forwardCheckHit.normal / 2;
+                heightCheckOrigin.y += 4;
+
+                Debug.DrawRay(heightCheckOrigin, Vector3.down * 5, Color.cyan);
+                RaycastHit heightCheckHit;
+
+                // regarde la hauteur du mur
+                if (Physics.Raycast(heightCheckOrigin, Vector3.down, out heightCheckHit, 5))
+                {
+
+                    Vector3 leftNormal = Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
+                    leftHandPos = forwardCheckHit.point + leftNormal * (handsSpace / 2);
+                    leftHandPos.y = heightCheckHit.point.y;
+
+                    Vector3 rightNormal = -Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
+                    rightHandPos = forwardCheckHit.point + rightNormal * (handsSpace / 2);
+                    rightHandPos.y = heightCheckHit.point.y;
+
+
+                    //regarde si la main gauche sera dans le vide
+                    RaycastHit leftCheckHit;
+                    Vector3 leftCheckOrigin = -forwardCheckHit.normal / 3;
+                    leftCheckOrigin.y = 0;
+                    leftCheckOrigin += leftHandPos + (Vector3.up / 2);
+                    Debug.DrawRay(leftCheckOrigin, Vector3.down * 1, Color.cyan);
+                    if (Physics.Raycast(leftCheckOrigin, Vector3.down, out leftCheckHit, 1, LayerMask.GetMask("Default")))
+                    {
+                        if (leftCheckHit.point.y == heightCheckHit.point.y)
+                        {
+                            leftHandFix = true;
+                        }
+                    }
+                    else
+                        leftHandFix = false;
+
+                    RaycastHit secondLeftCheckHit;
+                    leftCheckOrigin += forwardCheckHit.normal / 1.5f;
+                    Debug.DrawRay(leftCheckOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f), Color.cyan);
+                    if (Physics.Raycast(leftCheckOrigin, Vector3.down, out secondLeftCheckHit, heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f, LayerMask.GetMask("Default")))
+                    {
+                        leftHandFix = false;
+                    }
+
+                    //regarde si la main droite sera dans le vide
+                    RaycastHit rightCheckHit;
+                    Vector3 rightCheckOrigin = -forwardCheckHit.normal / 3;
+                    rightCheckOrigin.y = 0;
+                    rightCheckOrigin += rightHandPos + (Vector3.up / 2);
+                    Debug.DrawRay(rightCheckOrigin, Vector3.down * 1, Color.cyan);
+                    if (Physics.Raycast(rightCheckOrigin, Vector3.down, out rightCheckHit, 1, LayerMask.GetMask("Default")))
+                    {
+                        if (rightCheckHit.point.y == heightCheckHit.point.y)
+                        {
+                            rightHandFix = true;
+                        }
+                    }
+                    else
+                        rightHandFix = false;
+
+                    RaycastHit secondRightCheckHit;
+                    rightCheckOrigin += forwardCheckHit.normal / 1.5f;
+                    Debug.DrawRay(rightCheckOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f), Color.cyan);
+                    if (Physics.Raycast(rightCheckOrigin, Vector3.down, out secondRightCheckHit, heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f, LayerMask.GetMask("Default")))
+                    {
+                        rightHandFix = false;
+                    }
+
+                    //si les deux main sont dans le vire, le mur ne peut pas etre monté
+                    if (leftHandFix == true || rightHandFix == true)
+                    {
+                        if (leftHandFix == false)
+                        {
+                            leftHandPos += rightNormal * (handsSpace / 2);
+                            rightHandPos += rightNormal * (handsSpace / 2);
+                        }
+                        if (rightHandFix == false)
+                        {
+                            leftHandPos += leftNormal * (handsSpace / 2);
+                            rightHandPos += leftNormal * (handsSpace / 2);
+                        }
+                    }
+
+
+
+                    Debug.DrawLine(forwardCheckHit.point, leftHandPos, Color.cyan);
+                    // Debug.DrawRay(forwardCheckHit.point + leftNormal / 2, Vector3.up * (heightCheckHit.point.y - forwardCheckHit.point.y), Color.cyan);
+
+                    Debug.DrawLine(forwardCheckHit.point, rightHandPos, Color.cyan);
+                    // Debug.DrawRay(forwardCheckHit.point + rightNormal / 2, Vector3.up *(heightCheckHit.point.y - forwardCheckHit.point.y), Color.cyan);
+                }
+            }                         
+        }
+        else
+        {
+            obstacleDotProduct = 1;
+        }
+
+        return obstacleForward;
+    }
+
+
+    //Renvoie le target rotation du joueur selon le vector de direction envoyer
+    public Quaternion TargetRotation(Vector3 targetDir, bool forceTurn = false)
+    {
+        Quaternion targetRotation = Quaternion.identity;
+        if (!TouchMovingInput() && forceTurn == false)
+        {
+            targetRotation = transform.rotation;
+        }
+        else
+        {
+            Quaternion tr = Quaternion.LookRotation(targetDir);
+            targetRotation = Quaternion.Slerp(
+               transform.rotation, tr,
+                Time.deltaTime * rotationSpeed);
+        }
+
+        return targetRotation;
+    }
+
+    //Renvoie le targetDirection des input
+    public Vector3 TargetDirection()
+    {
+        float horizontal = Input.GetAxis("Horizontal");
+        float vertical = Input.GetAxis("Vertical");
+
+        Vector3 targetDir = camTransform.forward * vertical;
+        targetDir += camTransform.right * horizontal;
+        targetDir.y = 0;
+
+        return targetDir;
+    }
+
+
+    //Set la position du LookTarget pour que la tete du player tourne dans la direction avec le component LookAtIk
+    public void LookTarget()
+    {
+        Vector3 lookTargetPosition = Vector3.Lerp(lookTarget.position, (anim.GetBoneTransform(HumanBodyBones.Head).position + camTransform.transform.forward * 10), Time.deltaTime * 8);
+        lookTargetPosition.y = anim.GetBoneTransform(HumanBodyBones.Head).position.y;
+        lookTarget.position = lookTargetPosition;
+    }
+
+
+    //Check quelle pied est devant pour pouvoir lancé les animation en conséquence du pied qui est en avant
+    public bool RightFootForward()
+    {
+        bool result = false;
+
+        Vector3 lf_relativPos = transform.InverseTransformPoint(leftFoot.position);
+        Vector3 rf_relativPos = transform.InverseTransformPoint(rightFoot.position);
+
+        result = false;
+        if (rf_relativPos.z > lf_relativPos.z)
+            result = true;
+
+        return result;
+    }
+
+  
+    //Check si on touche les moving Input en regardant le rawAxis
+    public bool TouchMovingInput()
+    {
+        bool result = true;
+        if (Input.GetAxisRaw("Horizontal") == 0 && Input.GetAxisRaw("Vertical") == 0)
+            result = false;
+
+        return result;
+    }
+
+    
+    //Set les transform du jouer comme la rotation et la position et garde le model au centre du parent
+    void StayInConrtoller()
+    {
+        anim.transform.localPosition = Vector3.zero;
+        anim.transform.localEulerAngles = Vector3.zero;
+    }
+
+
+    //Check si le player touche au sol
+    public bool grounded = false;
+    private Vector3 groundPosition;
+    public void CheckIfGrounded()
+    {     
         Vector3 dir = -Vector3.up;
 
         Vector3 origin = transform.position;
@@ -178,11 +382,11 @@ public class PlayerController : MonoBehaviour
         float leftDis;
         float rightDis;
 
-        if (isGrounded)
+        if (grounded)
         {
             dis = groundCheckDistance + 2;
             leftDis = groundCheckDistance + 1;
-            rightDis = groundCheckDistance +  1;
+            rightDis = groundCheckDistance + 1;
         }
         else
         {
@@ -190,7 +394,6 @@ public class PlayerController : MonoBehaviour
             leftDis = airGroundCheckDistance + 0.5f;
             rightDis = airGroundCheckDistance + 0.5f;
         }
-  
 
         Debug.DrawRay(origin, dir * dis, Color.blue);
         Debug.DrawRay(leftOrigin, dir * leftDis, Color.blue);
@@ -201,42 +404,46 @@ public class PlayerController : MonoBehaviour
         RaycastHit rightHit;
 
         if (Physics.Raycast(origin, dir, out hit, dis, LayerMask.GetMask("Default")))
-        {         
-            if(hit.transform.gameObject != gameObject)
+        {
+            if (hit.transform.gameObject != gameObject)
             {
                 groundPosition = hit.point;
-              
-                isGrounded = true;
+
+                grounded = true;
             }
         }
         else
         {
-            isGrounded = false;
+            grounded = false;
         }
 
+     //  if (Physics.Raycast(leftOrigin, dir, out leftHit, leftDis))
+     //  {
+     //      if (leftHit.transform.gameObject != gameObject)
+     //      {
+     //          grounded = true;
+     //      }
+     //  }
+     //
+     //  if (Physics.Raycast(rightOrigin, dir, out rightHit, rightDis))
+     //  {
+     //      if (rightHit.transform.gameObject != gameObject)
+     //      {
+     //          grounded = true;
+     //      }
+     //  }
 
-        if (Physics.Raycast(leftOrigin, dir, out leftHit, leftDis))
+        if (grounded)
         {
-            if (hit.transform.gameObject != gameObject)
-            {
-                isGrounded = true;
-            }
+            Vector3 heightPos = transform.position;
+            heightPos.y = groundPosition.y;
+            transform.position = Vector3.Lerp(transform.position, heightPos, Time.deltaTime * heightFromGroundAdaptation);
         }
-  
-
-
-        if (Physics.Raycast(rightOrigin, dir, out rightHit, rightDis))
-        {
-            if (hit.transform.gameObject != gameObject)
-            {
-                isGrounded = true;
-            }
-        }
-
     }
 
+
     //Check l'inclinaison du sol et determine si on la monde ou descent
-    public OnSlopeData slopeDataResult = new OnSlopeData();
+    private bool sliding;
     public OnSlopeData CheckGroundSlope(Vector3 origin)
     {
         RaycastHit hit;
@@ -308,320 +515,16 @@ public class PlayerController : MonoBehaviour
             if (Physics.Raycast(secondRay, -Vector3.up, out slopeDirHit, 3, LayerMask.GetMask("Default")))
                 slopeDirPosition = slopeDirHit.point;
 
-            if (firstHitPosition.y > upOrDownPosition.y)
-                downSlope = true;
-            else
-                downSlope = false;
-
             slopeDataResult.slopeDirection = slopeDirPosition - firstHitPosition;
             slopeDataResult.slopeDotDirection = Vector3.Dot(transform.forward, slopeDataResult.slopeDirection);
 
-            Debug.DrawRay(firstHitPosition, slopeDataResult.slopeDirection * 2, slopeDataResult.slopeAngle > maxSlopeWalkable && !isSliding ? Color.yellow : isSliding ? Color.red : Color.green);       
+            Debug.DrawRay(firstHitPosition, slopeDataResult.slopeDirection * 2, slopeDataResult.slopeAngle > maxSlopeWalkable && !sliding ? Color.yellow : sliding ? Color.red : Color.green);
         }
 
         return slopeDataResult;
     }
 
-    #endregion
 
-    //Get les variable des géré par les input;
-    void GetInput()
-    {
-
-        if (Input.GetButton(SprintInput))
-        {
-            isSprinting = true;
-        }
-        else
-            isSprinting = false;
-
-        if (Input.GetButton(LockOnInput))
-        {
-            if (isSprinting == false && isSliding == false)
-                lockOn = true;
-            else
-                lockOn = false;
-        }
-        else
-            lockOn = false;
-    }
-
-    //Ajuste la hauteur du player par rapport au sol
-    public void AdjustPlayerHeightFromGround()
-    {      
-        Vector3 heightPos = transform.position;
-        heightPos.y = groundPosition.y;
-        transform.position = Vector3.Lerp(transform.position, heightPos, Time.deltaTime * heightFromGroundAdaptation);
-    }
-
-    //Set les transform du jouer comme la rotation et la position et garde le model au centre du parent
-    void StayInConrtoller()
-    {
-        anim.transform.localPosition = Vector3.zero;
-        anim.transform.localEulerAngles = Vector3.zero;
-    }
-
-    //Check quelle pied est devant pour pouvoir lancé les animation en conséquence du pied qui est en avant
-    public bool RightFootForward()
-    {
-        bool result = false;
-
-        Vector3 lf_relativPos = transform.InverseTransformPoint(leftFoot.position);
-        Vector3 rf_relativPos = transform.InverseTransformPoint(rightFoot.position);
-
-        result = false;
-        if (rf_relativPos.z > lf_relativPos.z)
-            result = true;
-
-        return result;
-    }
-
-    //Envoie les variable calculé a l'Animator pour joué avec les blendTrees
-    void SetAnimationVariable()
-    {   
-        anim.SetBool("IsGrounded", isGrounded);
-        anim.SetBool("LockOn", lockOn);
-    }
-
-
-
-    //calcul les variable comme le moveAmount ou le turnAmount pour pouvoir les envoyer a l'animator
-    void m()
-    {    
-        if(groundSlopeAngle < minSlopeAffectSpeed)
-        {
-            if (targetMoveAmount > 0)
-            {
-                if (isSprinting == false)
-                {
-                    if(lockOn == false)
-                       
-                    else
-                        moveAmount = Mathf.Lerp(moveAmount, vertical, Time.unscaledDeltaTime * rotationSpeed);
-                }                 
-                else
-                             
-            }
-            else
-                moveAmount = Mathf.Lerp(moveAmount, 0, Time.unscaledDeltaTime * (isGrounded ? 5 : 200));
-
-            isSliding = false;
-        }
-        else
-        {
-            float slopeMoveAmount = Remap(groundSlopeAngle, minSlopeAffectSpeed, maxSlopeWalkable, 1, 0);
-
-            slopeMoveAmount = Mathf.Clamp(slopeMoveAmount, 0, 1) * targetMoveAmount;
-
-            if(groundSlopeAngle < maxSlopeWalkable)
-            {
-             
-                if(lockOn == false)
-                {
-                }
-                else
-                {
-                    moveAmount = Mathf.Lerp(moveAmount, vertical, Time.unscaledDeltaTime * acceleration);
-                }
-
-
-                isSliding = false;
-            }
-            else
-            {
-
-               
-
-
-                if(moveAmount < 0.1f)
-                {
-                    moveAmount = 0;
-                    isSliding = true;
-                }               
-            }                  
-        }
-
-
-       
-
-
-        if(lockOn == false)
-        {
-           
-        }
-        else
-        {
-            
-        }
-       
-    }
-
-    //Regarde si il y a un obstacle devant le player
-    public void CheckIfObstaceForward()
-    {
-        Vector3 forwardCheckOrigin = transform.position;
-        forwardCheckOrigin.y += 1;
-
-        Debug.DrawRay(forwardCheckOrigin, transform.forward * forwardObstacleCheckDistance, Color.cyan);
-
-  
-        Vector3 forwardCheckDirection = transform.forward;
-
-        if(leftHandFix && rightHandFix)
-        {
-            if (Vector3.Distance(transform.position, leftHandPos) > Vector3.Distance(transform.position, rightHandPos))
-                forwardCheckDirection = Vector3.Lerp(-transform.right, transform.forward, obstacleDotProduct);
-            else
-                forwardCheckDirection = Vector3.Lerp(transform.right, transform.forward, obstacleDotProduct);
-            forwardCheckDirection = Vector3.Lerp(forwardCheckDirection, transform.forward, 0.5f);
-        }
-     
-
-        Debug.DrawRay(forwardCheckOrigin, forwardCheckDirection * 2, Color.cyan);
-
-
-        RaycastHit forwardCheckHit;
-        // regarde devant le joueur si il y a un mur
-        if (Physics.Raycast(forwardCheckOrigin, forwardCheckDirection, out forwardCheckHit, forwardObstacleCheckDistance))
-        {
-            obstacleForward = true;
-            obstacleDotProduct = Vector3.Dot(-forwardCheckHit.normal, transform.forward);
-
-            //Si l'angle entre le personnage et le mur est trop grand annule
-            if (obstacleDotProduct < 0.3f)
-                return;
-
-            Vector3 heightCheckOrigin = forwardCheckHit.point + -forwardCheckHit.normal / 2;
-            heightCheckOrigin.y += 4;
-
-            Debug.DrawRay(heightCheckOrigin, Vector3.down * 5, Color.cyan);
-            RaycastHit heightCheckHit;
-
-            // regarde la hauteur du mur
-            if (Physics.Raycast(heightCheckOrigin, Vector3.down, out heightCheckHit, 5))
-            {
-
-                Vector3 leftNormal = Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
-                leftHandPos = forwardCheckHit.point + leftNormal * (handsSpace / 2);
-                leftHandPos.y = heightCheckHit.point.y;
-
-                Vector3 rightNormal = -Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
-                rightHandPos = forwardCheckHit.point + rightNormal * (handsSpace / 2);
-                rightHandPos.y = heightCheckHit.point.y;
-
-
-                //regarde si la main gauche sera dans le vide
-                RaycastHit leftCheckHit;
-                Vector3 leftCheckOrigin = -forwardCheckHit.normal / 3;
-                leftCheckOrigin.y = 0;
-                leftCheckOrigin += leftHandPos + (Vector3.up / 2);
-                Debug.DrawRay(leftCheckOrigin, Vector3.down * 1, Color.cyan);
-                if (Physics.Raycast(leftCheckOrigin, Vector3.down, out leftCheckHit, 1, LayerMask.GetMask("Default")))
-                {
-                    if (leftCheckHit.point.y == heightCheckHit.point.y)
-                    {
-                        leftHandFix = true;
-                    }
-                }
-                else
-                    leftHandFix = false;
-
-                RaycastHit secondLeftCheckHit;
-                leftCheckOrigin += forwardCheckHit.normal / 1.5f;
-                Debug.DrawRay(leftCheckOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f), Color.cyan);
-                if (Physics.Raycast(leftCheckOrigin, Vector3.down, out secondLeftCheckHit, heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f, LayerMask.GetMask("Default")))
-                {
-                    leftHandFix = false;
-                }
-
-                //regarde si la main droite sera dans le vide
-                RaycastHit rightCheckHit;
-                Vector3 rightCheckOrigin = -forwardCheckHit.normal / 3;
-                rightCheckOrigin.y = 0;
-                rightCheckOrigin += rightHandPos + (Vector3.up / 2);
-                Debug.DrawRay(rightCheckOrigin, Vector3.down * 1, Color.cyan);
-                if (Physics.Raycast(rightCheckOrigin, Vector3.down, out rightCheckHit, 1, LayerMask.GetMask("Default")))
-                {
-                    if (rightCheckHit.point.y == heightCheckHit.point.y)
-                    {
-                        rightHandFix = true;
-                    }
-                }
-                else
-                    rightHandFix = false;
-
-                RaycastHit secondRightCheckHit;
-                rightCheckOrigin += forwardCheckHit.normal / 1.5f;
-                Debug.DrawRay(rightCheckOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f), Color.cyan);
-                if (Physics.Raycast(rightCheckOrigin, Vector3.down, out secondRightCheckHit, heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f, LayerMask.GetMask("Default")))
-                {
-                    rightHandFix = false;
-                }
-
-                //si les deux main sont dans le vire, le mur ne peut pas etre monté
-                if (leftHandFix == false && rightHandFix == false)
-                {
-                    return;
-                }
-
-                if (leftHandFix == false)
-                {
-                    leftHandPos += rightNormal * (handsSpace / 2);
-                    rightHandPos += rightNormal * (handsSpace / 2);
-                }
-                if (rightHandFix == false)
-                {
-                    leftHandPos += leftNormal * (handsSpace / 2);
-                    rightHandPos += leftNormal * (handsSpace / 2);
-                }
-
-                Debug.DrawLine(forwardCheckHit.point, leftHandPos, Color.cyan);
-                // Debug.DrawRay(forwardCheckHit.point + leftNormal / 2, Vector3.up * (heightCheckHit.point.y - forwardCheckHit.point.y), Color.cyan);
-
-                Debug.DrawLine(forwardCheckHit.point, rightHandPos, Color.cyan);
-                // Debug.DrawRay(forwardCheckHit.point + rightNormal / 2, Vector3.up *(heightCheckHit.point.y - forwardCheckHit.point.y), Color.cyan);
-                }
-        }
-        else
-        {
-            obstacleDotProduct = 1;
-        }
-       
-     
-    }
-
-    public Quaternion TargetRotation(Vector3 targetDir)
-    {
-        Quaternion targetRotation = Quaternion.identity;
-        if (Input.GetAxisRaw("Horizontal") == 0 && Input.GetAxisRaw("Vertical") == 0)
-        {
-            targetRotation = transform.rotation;
-        }
-        else
-        {
-            Quaternion tr = Quaternion.LookRotation(targetDir);
-            targetRotation = Quaternion.Slerp(
-               transform.rotation, tr,
-                Time.deltaTime * rotationSpeed);
-        }
-
-        return targetRotation;
-    }
-
-
-    //Set la position du LookTarget pour que la tete du player tourne dans la direction avec le component LookAtIk
-    void LookTarget()
-    {
-        Vector3 lookTargetPosition = Vector3.Lerp(lookTarget.position, (anim.GetBoneTransform(HumanBodyBones.Head).position + camTransform.transform.forward * 10), Time.deltaTime * 8);
-        lookTargetPosition.y = anim.GetBoneTransform(HumanBodyBones.Head).position.y;
-        lookTarget.position = lookTargetPosition;
-    }
-
-
-    float Remap(float value, float from1, float to1, float from2, float to2)
-    {
-        return (value - from1) / (to1 - from1) * (to2 - from2) + from2;
-    }
 }
 
 public class OnSlopeData
