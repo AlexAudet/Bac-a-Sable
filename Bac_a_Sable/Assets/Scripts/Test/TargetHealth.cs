@@ -6,7 +6,6 @@ using Sirenix.OdinInspector;
 public class TargetHealth : MonoBehaviour
 {
     public HealthBar healthBar;
-    public Score score;
     
     public float maxHealth = 100;
     [ReadOnly]
@@ -17,7 +16,10 @@ public class TargetHealth : MonoBehaviour
         health = maxHealth;
         healthBar.SetMaxHealth(maxHealth);
     }
-
+    private void OnTriggerEnter(Collider other)
+    {
+        TargetManager.instance.RandomMovement();
+    }
 
     public void takeDomage (float domage)
     {
@@ -38,7 +40,7 @@ public class TargetHealth : MonoBehaviour
     private void death()
     {
         TargetManager.instance.SpawnTarget();
-        score.AddPointsAndTime(TargetManager.instance.speed);
+        Score.instance.AddPointsAndTime(TargetManager.instance.speed);
     }
 
 

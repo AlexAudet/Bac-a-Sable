@@ -5,6 +5,13 @@ using UnityEngine.UI;
 
 public class Score : MonoBehaviour
 {
+
+    public static Score instance;
+    Score()
+    {
+        instance = this;
+    }
+
     public int score;
     public float timeLeft;
     public Text scoreText;
@@ -12,14 +19,20 @@ public class Score : MonoBehaviour
 
     void Update()
     {
-        timeLeft -= 1 * Time.deltaTime;
+        
 
         if (timeLeft <= 0)
         {
+            timeLeft = 0;
             FindObjectOfType<BoiteEtFusilGameManager>().GameOver();
+            timeText.text = timeLeft.ToString();
         }
-
-        timeText.text = timeLeft.ToString();
+        else
+        {
+            timeLeft -= Time.deltaTime;
+            timeText.text = timeLeft.ToString();   
+        }
+        
     }
     void Start()
     {
@@ -34,5 +47,6 @@ public class Score : MonoBehaviour
         timeLeft+=points;
         timeText.text = timeLeft.ToString();
         scoreText.text = score.ToString();
+        TargetManager.instance.AddSpeed();
     }
 }

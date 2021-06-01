@@ -23,16 +23,45 @@ public class TargetManager : MonoBehaviour
     public int speed = 1;
     public float TargetScale = 1;
     public Vector3 motionRange = new Vector3(10, 10, 10);
-    public Vector3 direction = new Vector3(1, 1, 1);
+    public Vector3 direction;
 
     // Update is called once per frame
-
     Vector3 pos;
     void Update()
     {
-       pos = objectInstance.transform.position;
+        Zone();  
+    }
 
-       if(pos.x>(spawnPosition.x+motionRange.x))
+    public void SpawnTarget()
+    {
+        if (objectInstance != null)
+           Destroy(objectInstance);
+      
+        objectInstance = Instantiate(objetReference, spawnPosition, Quaternion.LookRotation(Vector3.zero));
+        objectInstance.transform.localScale *= TargetScale;
+
+        objectInstance.GetComponent<Collider>().isTrigger=true;
+
+        canvasInstance = Instantiate(canvasReference,objectInstance.transform);
+        canvasInstance.transform.localPosition = healthBarOffset;
+        healthBarInstance = canvasInstance.GetComponentInChildren<HealthBar>();
+
+        TargetHealth newTargetHealth;
+        newTargetHealth = objectInstance.AddComponent<TargetHealth>();
+        newTargetHealth.healthBar = healthBarInstance;
+        RandomMovement();
+    }
+
+    public void AddSpeed()
+    {
+        speed++;
+    }
+
+    private void Zone()
+    {
+        pos = objectInstance.transform.position;
+
+        if (pos.x > (spawnPosition.x + motionRange.x))
         {
             direction.x = Random.Range(-1f, -0.01f);
         }
@@ -59,36 +88,46 @@ public class TargetManager : MonoBehaviour
 
         if (pos.z < spawnPosition.z - motionRange.z)
         {
-            direction.z = Random.Range(0.01f,1f);
+            direction.z = Random.Range(0.01f, 1f);
         }
 
-        objectInstance.transform.position += (direction * speed)*Time.deltaTime;
-
-      //if(pu de vie) spawn un autre ;
+        objectInstance.transform.position += (direction * speed) * Time.deltaTime;
     }
 
-    public void SpawnTarget()
+    public void RandomMovement()
     {
-        if (objectInstance != null)
-           Destroy(objectInstance);
 
-        objectInstance = Instantiate(objetReference, spawnPosition, Quaternion.LookRotation(Vector3.zero));
-        objectInstance.transform.localScale *= TargetScale;
+        if (direction.x > 0)
+        {
+            direction.x = Random.Range(-1f, -0.01f);
+        }
 
+        if (direction.x < 0)
+        {
+            direction.x = Random.Range(0.01f, 1f);
+        }
 
-        canvasInstance = Instantiate(canvasReference,objectInstance.transform);
-        canvasInstance.transform.localPosition = healthBarOffset;
-        healthBarInstance = canvasInstance.GetComponentInChildren<HealthBar>();
+        if (direction.y > 0)
+        {
+            direction.y = Random.Range(-1f, -0.01f);
+        }
 
+        if (direction.y < 0)
+        {
+            direction.y = Random.Range(0.01f, 1f);
+        }
 
-        TargetHealth newTargetHealth;
-        newTargetHealth = objectInstance.AddComponent<TargetHealth>();
-        newTargetHealth.healthBar = healthBarInstance;
-    }
+        if (direction.z > 0)
+        {
+            direction.z = Random.Range(-1f, -0.01f);
+        }
 
-    public void AddSpeed()
-    {
-        speed++;
+        if (direction.z < 0)
+        {
+            direction.z = Random.Range(0.01f, 1f);
+        }
+
+        objectInstance.transform.Translate(direction);
     }
 
 }

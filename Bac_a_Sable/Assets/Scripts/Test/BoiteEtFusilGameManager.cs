@@ -4,6 +4,14 @@ using UnityEngine.SceneManagement;
 
 public class BoiteEtFusilGameManager : MonoBehaviour
 {
+
+    public static BoiteEtFusilGameManager instance;
+    BoiteEtFusilGameManager()
+    {
+        instance = this;
+    }
+
+
     bool gameHasEnded = false;
     public float restartTime = 1f;
 
