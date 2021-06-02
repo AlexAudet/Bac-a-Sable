@@ -52,6 +52,7 @@ public class CameraController : MonoBehaviour
 
 	public Transform target; // The target Transform to follow
 	public Transform rotationSpace; // If assigned, will use this Transform's rotation as the rotation space instead of the world space. Useful with spherical planets.
+	public Transform noRotCamTransform;
 	public UpdateMode updateMode = UpdateMode.LateUpdate; // When to update the camera?
 	public bool lockCursor = true; // If true, the mouse will be locked to screen center and hidden
 
@@ -64,7 +65,6 @@ public class CameraController : MonoBehaviour
 	public float rotationSensitivity = 3.5f; // The sensitivity of rotation
 	public float yMinLimit = -20; // Min vertical angle
 	public float yMaxLimit = 80; // Max vertical angle
-	public bool rotateAlways = true; // Always rotate to mouse?
 
 	[Header("Distance")]
 	public float distance = 10.0f; // The current distance to target
@@ -217,9 +217,13 @@ public class CameraController : MonoBehaviour
 
 			// Translating the camera
 			transform.position = position;
+			noRotCamTransform.position = position;
 		}
 
 		transform.rotation = rotation;
+
+		rotation.x = 0;
+		noRotCamTransform.rotation = rotation;
 	}
 
 	// Zoom input

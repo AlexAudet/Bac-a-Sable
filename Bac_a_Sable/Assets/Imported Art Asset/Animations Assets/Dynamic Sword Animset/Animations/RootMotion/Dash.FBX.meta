@@ -419,7 +419,7 @@ ModelImporter:
       name: R_Dash
       takeName: Take 001
       internalID: 0
-      firstFrame: 0
+      firstFrame: 7.5
       lastFrame: 28
       wrapMode: 0
       orientationOffsetY: 0

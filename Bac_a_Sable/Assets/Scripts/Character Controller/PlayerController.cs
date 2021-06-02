@@ -10,6 +10,7 @@ public class PlayerController : MonoBehaviour
     public string SprintInput = "Sprint";
     public string LockOnInput = "LockOn";
     public string JumpImput = "Jump";
+    public string RollInput = "";
     [Space(50)]
     //si on affiche les Ray debug ou non
     public bool showDebug = false;                 
@@ -29,6 +30,8 @@ public class PlayerController : MonoBehaviour
     public float gravityForce = 9;
     [Space(20)]
     public float jumpForce = 3;
+    public int airJumpAmount = 2;
+    public float rollSpeed = 2;
     [Space(20)]
     // la distance que le player check si il est face a un mur ou non
     public float forwardObstacleCheckDistance = 3f;
@@ -62,17 +65,19 @@ public class PlayerController : MonoBehaviour
     [HideInInspector] public PlayerState state;
     [HideInInspector] public OnSlopeData slopeDataResult = new OnSlopeData();
     [HideInInspector] public Transform camTransform;
+    [HideInInspector] public Transform noRotCamTransform;
     [HideInInspector] public Rigidbody rigid;
     private Transform leftFoot;
     private Transform rightFoot;
     private Animator anim;
 
-
+    [HideInInspector] public int currentAirJumpAmount;
     #endregion
 
     private void Start()
     {
         camTransform = Camera.main.transform;
+        noRotCamTransform = CameraController.Instance.noRotCamTransform;
         anim = GetComponentInChildren<Animator>();
         rigid = GetComponent<Rigidbody>();
 
@@ -122,6 +127,10 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    float Remap(float value, float from1, float to1, float from2, float to2)
+    {
+        return (value - from1) / (to1 - from1) * (to2 - from2) + from2;
+    }
 
     //Regarde si on est en train de viser
     public bool OnAiming()
@@ -133,6 +142,12 @@ public class PlayerController : MonoBehaviour
     public bool Jump()
     {
         return Input.GetButtonDown(JumpImput);
+    }
+
+    //Regarde si on est en train de Rouller
+    public bool Roll()
+    {
+        return Input.GetButtonDown(RollInput);
     }
 
     //Regarde si on est en train de sprinter
@@ -286,35 +301,136 @@ public class PlayerController : MonoBehaviour
 
 
     //Renvoie le target rotation du joueur selon le vector de direction envoyer
-    public Quaternion TargetRotation(Vector3 targetDir, bool forceTurn = false)
+    public Quaternion TargetRotation(Vector3 targetDir, bool forceTurn = false, bool instantTurn = false)
     {
         Quaternion targetRotation = Quaternion.identity;
-        if (!TouchMovingInput() && forceTurn == false)
+
+        if(!instantTurn)
         {
-            targetRotation = transform.rotation;
+            if (!TouchMovingInput() && forceTurn == false)
+            {
+                targetRotation = transform.rotation;
+            }
+            else
+            {
+                Quaternion tr = Quaternion.LookRotation(targetDir);
+                targetRotation = Quaternion.Slerp(
+                   transform.rotation, tr,
+                    Time.deltaTime * rotationSpeed);
+            }
         }
         else
         {
-            Quaternion tr = Quaternion.LookRotation(targetDir);
-            targetRotation = Quaternion.Slerp(
-               transform.rotation, tr,
-                Time.deltaTime * rotationSpeed);
+            targetRotation = Quaternion.LookRotation(targetDir);
         }
+       
 
         return targetRotation;
     }
 
     //Renvoie le targetDirection des input
-    public Vector3 TargetDirection()
+    private Vector3 targetDir;
+    public Vector3 TargetDirection(bool notRotTransform = false, bool baseOnlyOnCam = false)
     {
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
 
-        Vector3 targetDir = camTransform.forward * vertical;
-        targetDir += camTransform.right * horizontal;
-        targetDir.y = 0;
+        if (!baseOnlyOnCam)
+        {
+            targetDir = (notRotTransform ? noRotCamTransform.forward : camTransform.forward) * vertical;
+            targetDir += (notRotTransform ? noRotCamTransform.right : camTransform.right) * horizontal;
+            targetDir.y = 0;
+        }
+        else
+        {
+            targetDir = (notRotTransform ? noRotCamTransform.forward : camTransform.forward);
+        }
+   
+
 
         return targetDir;
+    }
+
+    //Renvois le MoveAmount pour les animations
+    private float currentMoveAmount;
+    public float MoveAmount(bool canSprint = false)
+    {
+        float targetMoveAmount;
+
+        Vector3 targetDir = TargetDirection();
+        if (TouchMovingInput())
+        {      
+            if (!Sprint())
+                targetMoveAmount = Vector3.Magnitude(targetDir);
+            else
+                targetMoveAmount = canSprint ? 2 : Vector3.Magnitude(targetDir);
+        }
+        else
+            targetMoveAmount = 0;
+
+        currentMoveAmount = Mathf.Lerp(currentMoveAmount, targetMoveAmount, Time.deltaTime * acceleration);
+
+        return currentMoveAmount;
+    }
+    public void RestartMoveAmount()
+    {
+        currentMoveAmount = 0;
+    }
+
+    //Renvois le MoveAmount pour les animations
+    public float MoveAmountOnSlope(OnSlopeData slopeData, bool canSprint = false)
+    {
+        float slopeMoveAmount;
+        float targetMoveAmount;
+
+        Vector3 targetDir = TargetDirection();
+        if (TouchMovingInput())
+        {
+            if (!Sprint())
+                targetMoveAmount = Vector3.Magnitude(targetDir);
+            else
+                targetMoveAmount = canSprint ? 2 : Vector3.Magnitude(targetDir);
+        }
+        else
+            targetMoveAmount = 0;
+
+        float slopDotDirection = Remap(Mathf.Clamp(slopeData.slopeDotDirection, -1, 0), -1, 0, 0, 1);
+        slopeMoveAmount = Mathf.Clamp(Remap(slopeData.slopeAngle, minSlopeAffectSpeed, maxSlopeWalkable, 1, 0), 0, 1);
+        slopeMoveAmount = Mathf.Clamp(slopeMoveAmount + slopDotDirection, 0, 1);
+        slopeMoveAmount *= targetMoveAmount;
+
+        if (slopeData.slopeAngle < maxSlopeWalkable)
+        {
+            if (slopeData.slopeDotDirection < 1)
+                currentMoveAmount = Mathf.Lerp(currentMoveAmount, slopeMoveAmount, Time.deltaTime * overSlopeDecceleration);
+            else
+                currentMoveAmount = Mathf.Lerp(currentMoveAmount, targetMoveAmount * Remap(slopeData.slopeAngle, minSlopeAffectSpeed, 
+                    maxSlopeWalkable, 1, 2), Time.unscaledDeltaTime * rotationSpeed);
+        }
+        else
+            currentMoveAmount = Mathf.Lerp(currentMoveAmount, 0, Time.unscaledDeltaTime * overSlopeDecceleration);
+
+        return currentMoveAmount;
+    }
+
+    //Renvois le TurnAmount pour les animations
+    private float currentTurnAmount;
+    public float TurnAmount()
+    {
+        float targetTurnAmount;
+
+        if ((TargetRotation(TargetDirection()).eulerAngles - transform.eulerAngles).sqrMagnitude > 100)
+        {
+            targetTurnAmount = Vector3.Dot(transform.right, TargetDirection());
+
+            currentTurnAmount = Mathf.Lerp(currentTurnAmount, targetTurnAmount, Time.unscaledDeltaTime * 10);
+        }
+        else
+        {
+            currentTurnAmount = Mathf.Lerp(currentTurnAmount, 0, Time.unscaledDeltaTime * 10);
+        }
+
+        return currentTurnAmount;
     }
 
 
@@ -370,38 +486,22 @@ public class PlayerController : MonoBehaviour
         Vector3 dir = -Vector3.up;
 
         Vector3 origin = transform.position;
-        origin.y += 2;
-
-        Vector3 leftOrigin = leftFoot.position;
-        leftOrigin.y += 0.5f;
-
-        Vector3 rightOrigin = rightFoot.position;
-        rightOrigin.y += 0.5f;
+        origin += transform.up * 2;
 
         float dis;
-        float leftDis;
-        float rightDis;
 
         if (grounded)
         {
             dis = groundCheckDistance + 2;
-            leftDis = groundCheckDistance + 1;
-            rightDis = groundCheckDistance + 1;
         }
         else
         {
-            dis = airGroundCheckDistance + 2;
-            leftDis = airGroundCheckDistance + 0.5f;
-            rightDis = airGroundCheckDistance + 0.5f;
+            dis = airGroundCheckDistance * Vector3.Dot(Vector3.up, transform.up) + 2;
         }
 
         Debug.DrawRay(origin, dir * dis, Color.blue);
-        Debug.DrawRay(leftOrigin, dir * leftDis, Color.blue);
-        Debug.DrawRay(rightOrigin, dir * rightDis, Color.blue);
 
         RaycastHit hit;
-        RaycastHit leftHit;
-        RaycastHit rightHit;
 
         if (Physics.Raycast(origin, dir, out hit, dis, LayerMask.GetMask("Default")))
         {
@@ -417,21 +517,6 @@ public class PlayerController : MonoBehaviour
             grounded = false;
         }
 
-     //  if (Physics.Raycast(leftOrigin, dir, out leftHit, leftDis))
-     //  {
-     //      if (leftHit.transform.gameObject != gameObject)
-     //      {
-     //          grounded = true;
-     //      }
-     //  }
-     //
-     //  if (Physics.Raycast(rightOrigin, dir, out rightHit, rightDis))
-     //  {
-     //      if (rightHit.transform.gameObject != gameObject)
-     //      {
-     //          grounded = true;
-     //      }
-     //  }
 
         if (grounded)
         {
@@ -525,6 +610,8 @@ public class PlayerController : MonoBehaviour
     }
 
 
+
+  
 }
 
 public class OnSlopeData
