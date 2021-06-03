@@ -4627,7 +4627,8 @@ MonoBehaviour:
   gravityForce: -5
   jumpForce: 10
   airJumpAmount: 15
-  rollSpeed: 10
+  airControlSpeed: 5
+  rollDistanceMultiply: 2
   forwardObstacleCheckDistance: 3
   groundCheckDistance: 0.5
   airGroundCheckDistance: 0.1

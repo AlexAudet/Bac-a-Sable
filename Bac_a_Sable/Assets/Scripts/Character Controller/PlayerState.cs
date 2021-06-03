@@ -248,6 +248,8 @@ public class NotGrounded : PlayerState
     float moveAmount;
     float fallTimer;
 
+    Vector3 velocityForce;
+
     public override void Enter()
     {
         CameraController.Instance.updateMode = CameraController.UpdateMode.FixedUpdate;
@@ -258,8 +260,10 @@ public class NotGrounded : PlayerState
     public override void Update()
     {
         moveAmount = player.MoveAmount();
+        velocityForce = player.TargetDirection(notRotTransform: true) * player.airControlSpeed;
+        velocityForce.y = player.gravityForce;
 
-        player.rigid.AddForce(new Vector3(0, player.gravityForce, 0), ForceMode.Acceleration);
+        player.rigid.AddForce(velocityForce, ForceMode.Acceleration);
 
         player.transform.rotation = player.TargetRotation(player.TargetDirection(true));
 
@@ -310,6 +314,7 @@ public class Jump : PlayerState
     float fallTimer;
 
     Vector3 jumpDirection;
+    Vector3 velocityForce;
 
     public override void Enter()
     {   
@@ -334,10 +339,13 @@ public class Jump : PlayerState
     public override void Update()
     {
         moveAmount = player.MoveAmount();
+        velocityForce = player.TargetDirection(notRotTransform: true) * player.airControlSpeed;
+        velocityForce.y = player.gravityForce;
+
 
         if (anim.GetBool("IsRolling") == false)
         {
-            player.rigid.AddForce(new Vector3(0, player.gravityForce, 0), ForceMode.Acceleration);
+            player.rigid.AddForce(velocityForce, ForceMode.Acceleration);
 
             if (player.Roll())
             {

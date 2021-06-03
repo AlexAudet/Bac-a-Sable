@@ -31,7 +31,8 @@ public class PlayerController : MonoBehaviour
     [Space(20)]
     public float jumpForce = 3;
     public int airJumpAmount = 2;
-    public float rollSpeed = 2;
+    public float airControlSpeed = 5;
+    public float rollDistanceMultiply = 2;
     [Space(20)]
     // la distance que le player check si il est face a un mur ou non
     public float forwardObstacleCheckDistance = 3f;
@@ -90,7 +91,8 @@ public class PlayerController : MonoBehaviour
     private void Update()
     {
         state = state.Process();
-        StayInConrtoller(); 
+        StayInConrtoller();
+        ObstacleForward();
     }
 
     private void FixedUpdate()
@@ -500,7 +502,7 @@ public class PlayerController : MonoBehaviour
         }
 
         Debug.DrawRay(origin, dir * dis, Color.blue);
-
+        
         RaycastHit hit;
 
         if (Physics.Raycast(origin, dir, out hit, dis, LayerMask.GetMask("Default")))
