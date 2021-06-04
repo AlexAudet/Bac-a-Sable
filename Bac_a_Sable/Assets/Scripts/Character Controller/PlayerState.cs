@@ -53,13 +53,11 @@ public class NormalMovement : PlayerState
         : base(_player, _anim){ }
 
     OnSlopeData slopeData = new OnSlopeData();
-    Vector3 targetDir;
     Vector3 lastPosition;
     Vector3 currentVelocity;
     float moveAmount;
     float turnAmount;
     float canJumpTimer;
-    bool sprinting;
 
     public override void Enter()
     {
@@ -68,7 +66,7 @@ public class NormalMovement : PlayerState
         player.rigid.isKinematic = true;
         player.currentAirJumpAmount = 0;
 
-        player.transform.rotation = player.TargetRotation(player.TargetDirection(), instantTurn: true);
+        player.transform.rotation = player.TargetRotation(player.TargetDirection());
 
         canJumpTimer = 0;
         base.Enter();
@@ -77,18 +75,15 @@ public class NormalMovement : PlayerState
     public override void Update()
     {
         player.LookTarget();
-        targetDir = player.TargetDirection();
-        sprinting = player.Sprint();
-        turnAmount = player.TurnAmount();
         slopeData = player.CheckGroundSlope(player.transform.position);
-
+  
         if (slopeData.slopeAngle < player.minSlopeAffectSpeed)
             moveAmount = player.MoveAmount(true);
         else
         {
             moveAmount = player.MoveAmountOnSlope(slopeData, true);
 
-            if (slopeData.slopeAngle > player.maxSlopeWalkable)
+            if (slopeData.slopeAngle > player.maxSlopeWalkable && moveAmount <= 0.1f)
             {
                 moveAmount = 0;
 
@@ -96,12 +91,11 @@ public class NormalMovement : PlayerState
                 stage = EVENT.EXIT;
             }
         }
-
-              
-        player.transform.position += (anim.GetBool("IsRolling") == true ? 1.75f : 1) * anim.deltaPosition * (sprinting ? player.sprintSpeed : player.speed);
+     
+        player.transform.position += (anim.GetBool("IsRolling") == true ? 1.75f : 1) * anim.deltaPosition * (player.Sprint() ? player.sprintSpeed : player.speed);
 
         if(anim.GetBool("IsRolling") == false)
-            player.transform.rotation = player.TargetRotation(targetDir);
+            player.transform.rotation = player.TargetRotation(player.TargetDirection());
 
 
         canJumpTimer += Time.deltaTime;
@@ -109,11 +103,11 @@ public class NormalMovement : PlayerState
         anim.SetBool("IsGrounded", player.grounded);
         anim.SetBool("RightFootForward", player.RightFootForward());
         anim.SetFloat("Forward", moveAmount);
-        anim.SetFloat("Turn", turnAmount);
+        anim.SetFloat("Turn", player.TurnAmount());
 
         if(player.Roll() && canJumpTimer >= 0.2f)
         {   
-           if (!sprinting)
+           if (!player.Sprint())
            {
                if (moveAmount > 0.2f)
                    anim.CrossFade("Roll_Move", 0.1f);
@@ -127,7 +121,7 @@ public class NormalMovement : PlayerState
 
         if (player.Jump() && canJumpTimer >= 0.4f)
         {
-            nextState = new Jump(player, anim, moveAmount, sprinting, false);
+            nextState = new Jump(player, anim, moveAmount, player.Sprint(), false);
             stage = EVENT.EXIT;
         }
 
@@ -138,9 +132,10 @@ public class NormalMovement : PlayerState
         {
             player.rigid.isKinematic = false;
             anim.SetBool("IsGrounded", false);
+            anim.SetBool("IsRolling", false);
             CameraController.Instance.updateMode = CameraController.UpdateMode.FixedUpdate;
 
-            currentVelocity = player.transform.forward * 3 * Mathf.Clamp(moveAmount, 0.5f, 2) * (sprinting ? player.sprintSpeed : player.speed);
+            currentVelocity = player.transform.forward * 3 * Mathf.Clamp(moveAmount, 0.5f, 2) * (player.Sprint() ? player.sprintSpeed : player.speed);
        
             currentVelocity.y += 3;
             player.rigid.AddForce(currentVelocity, ForceMode.VelocityChange);
@@ -259,13 +254,27 @@ public class NotGrounded : PlayerState
     }
     public override void Update()
     {
-        moveAmount = player.MoveAmount();
         velocityForce = player.TargetDirection(notRotTransform: true) * player.airControlSpeed;
         velocityForce.y = player.gravityForce;
 
-        player.rigid.AddForce(velocityForce, ForceMode.Acceleration);
+        if (anim.GetBool("IsRolling") == false)
+        {
+            moveAmount = player.MoveAmount();
 
-        player.transform.rotation = player.TargetRotation(player.TargetDirection(true));
+            player.rigid.AddForce(velocityForce, ForceMode.Acceleration);
+            player.transform.rotation = player.TargetRotation(player.TargetDirection(true));
+
+            if (player.Roll())
+            {
+                player.transform.rotation = player.TargetRotation(player.TargetDirection(notRotTransform: true), instantTurn: true);
+                anim.Play("Dash_Air");
+            }
+        }
+        else
+        {
+            player.transform.position += 2 * anim.deltaPosition;
+            player.rigid.velocity = Vector3.zero;
+        }
 
 
         fallTimer += Time.deltaTime;
@@ -342,14 +351,16 @@ public class Jump : PlayerState
         velocityForce = player.TargetDirection(notRotTransform: true) * player.airControlSpeed;
         velocityForce.y = player.gravityForce;
 
-
         if (anim.GetBool("IsRolling") == false)
         {
+           
+
             player.rigid.AddForce(velocityForce, ForceMode.Acceleration);
+            player.transform.rotation = player.TargetRotation(player.TargetDirection(true));
 
             if (player.Roll())
             {
-                player.transform.rotation = player.TargetRotation(player.TargetDirection(baseOnlyOnCam : true), instantTurn : true);
+                player.transform.rotation = player.TargetRotation(player.TargetDirection(notRotTransform : true), instantTurn : true);
                 anim.Play("Dash_Air");
             }
         }
@@ -359,8 +370,7 @@ public class Jump : PlayerState
             player.rigid.velocity = Vector3.zero;
         }
             
-        if (anim.GetBool("IsRolling") == false)
-            player.transform.rotation = player.TargetRotation(player.TargetDirection(true));
+          
 
         timer += Time.deltaTime;
         fallTimer += Time.deltaTime;
@@ -369,6 +379,8 @@ public class Jump : PlayerState
         anim.SetFloat("Forward", moveAmount);
         anim.SetFloat("FallTime", fallTimer);
 
+
+
         if (player.Jump() && timer >= 0.05f && player.currentAirJumpAmount < player.airJumpAmount)
         {
             player.rigid.velocity = Vector3.zero;
@@ -376,8 +388,6 @@ public class Jump : PlayerState
             stage = EVENT.EXIT;
         }
 
-       
-          
         if (player.rigid.velocity.y < -0.2f || timer >= 0.2f)
         {
             anim.SetBool("Jump", false);
@@ -395,7 +405,31 @@ public class Jump : PlayerState
 
     public override void Exit()
     {
+        base.Exit();
+    }
+}
 
+public class Hang: PlayerState
+{
+    public Hang(PlayerController _player, Animator _anim)
+        : base(_player, _anim) { }
+
+
+
+    public override void Enter()
+    {
+
+        base.Enter();
+    }
+
+
+    public override void Update()
+    {
+
+    }
+
+    public override void Exit()
+    {
         base.Exit();
     }
 }

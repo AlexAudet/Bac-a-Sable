@@ -59,6 +59,8 @@ public class PlayerController : MonoBehaviour
 
     [Header("Wall climb")]
     public float handsSpace = 1;
+    public float hangDistanceFromTop = 0.5f;
+    public float distanceFromWallToHang = 1;
 
 
     #region privateVariable
@@ -160,8 +162,8 @@ public class PlayerController : MonoBehaviour
 
 
     // Regarde si il y a un obstacle devant le player
-    private bool leftHandFix = false;
-    private bool rightHandFix = false;
+    bool leftHandFix;
+    bool rightHandFix;
     private Vector3 leftHandPos;
     private Vector3 rightHandPos;
     private float obstacleDotProduct;
@@ -173,9 +175,7 @@ public class PlayerController : MonoBehaviour
         Vector3 forwardCheckOrigin = transform.position;
         forwardCheckOrigin.y += 1;
 
-        Debug.DrawRay(forwardCheckOrigin, transform.forward * forwardObstacleCheckDistance, Color.cyan);
-
-  
+    
         Vector3 forwardCheckDirection = transform.forward;
 
         if(leftHandFix && rightHandFix)
@@ -186,11 +186,12 @@ public class PlayerController : MonoBehaviour
                 forwardCheckDirection = Vector3.Lerp(transform.right, transform.forward, obstacleDotProduct);
             forwardCheckDirection = Vector3.Lerp(forwardCheckDirection, transform.forward, 0.5f);
         }
-     
 
+
+        Debug.DrawRay(forwardCheckOrigin, transform.forward * forwardObstacleCheckDistance, Color.cyan);
         Debug.DrawRay(forwardCheckOrigin, forwardCheckDirection * 2, Color.cyan);
 
-
+   
         RaycastHit forwardCheckHit;
         // regarde devant le joueur si il y a un mur
         if (Physics.Raycast(forwardCheckOrigin, forwardCheckDirection, out forwardCheckHit, forwardObstacleCheckDistance))
@@ -204,93 +205,33 @@ public class PlayerController : MonoBehaviour
                 Vector3 heightCheckOrigin = forwardCheckHit.point + -forwardCheckHit.normal / 2;
                 heightCheckOrigin.y += 4;
 
-                Debug.DrawRay(heightCheckOrigin, Vector3.down * 5, Color.cyan);
                 RaycastHit heightCheckHit;
 
                 // regarde la hauteur du mur
                 if (Physics.Raycast(heightCheckOrigin, Vector3.down, out heightCheckHit, 5))
                 {
-
-                    Vector3 leftNormal = Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
-                    leftHandPos = forwardCheckHit.point + leftNormal * (handsSpace / 2);
-                    leftHandPos.y = heightCheckHit.point.y;
-
-                    Vector3 rightNormal = -Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
-                    rightHandPos = forwardCheckHit.point + rightNormal * (handsSpace / 2);
-                    rightHandPos.y = heightCheckHit.point.y;
-
-
-                    //regarde si la main gauche sera dans le vide
-                    RaycastHit leftCheckHit;
-                    Vector3 leftCheckOrigin = -forwardCheckHit.normal / 3;
-                    leftCheckOrigin.y = 0;
-                    leftCheckOrigin += leftHandPos + (Vector3.up / 2);
-                    Debug.DrawRay(leftCheckOrigin, Vector3.down * 1, Color.cyan);
-                    if (Physics.Raycast(leftCheckOrigin, Vector3.down, out leftCheckHit, 1, LayerMask.GetMask("Default")))
-                    {
-                        if (leftCheckHit.point.y == heightCheckHit.point.y)
-                        {
-                            leftHandFix = true;
-                        }
-                    }
-                    else
-                        leftHandFix = false;
-
-                    RaycastHit secondLeftCheckHit;
-                    leftCheckOrigin += forwardCheckHit.normal / 1.5f;
-                    Debug.DrawRay(leftCheckOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f), Color.cyan);
-                    if (Physics.Raycast(leftCheckOrigin, Vector3.down, out secondLeftCheckHit, heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f, LayerMask.GetMask("Default")))
-                    {
-                        leftHandFix = false;
-                    }
-
-                    //regarde si la main droite sera dans le vide
-                    RaycastHit rightCheckHit;
-                    Vector3 rightCheckOrigin = -forwardCheckHit.normal / 3;
-                    rightCheckOrigin.y = 0;
-                    rightCheckOrigin += rightHandPos + (Vector3.up / 2);
-                    Debug.DrawRay(rightCheckOrigin, Vector3.down * 1, Color.cyan);
-                    if (Physics.Raycast(rightCheckOrigin, Vector3.down, out rightCheckHit, 1, LayerMask.GetMask("Default")))
-                    {
-                        if (rightCheckHit.point.y == heightCheckHit.point.y)
-                        {
-                            rightHandFix = true;
-                        }
-                    }
-                    else
-                        rightHandFix = false;
-
-                    RaycastHit secondRightCheckHit;
-                    rightCheckOrigin += forwardCheckHit.normal / 1.5f;
-                    Debug.DrawRay(rightCheckOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f), Color.cyan);
-                    if (Physics.Raycast(rightCheckOrigin, Vector3.down, out secondRightCheckHit, heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f, LayerMask.GetMask("Default")))
-                    {
-                        rightHandFix = false;
-                    }
-
                     //si les deux main sont dans le vire, le mur ne peut pas etre monté
-                    if (leftHandFix == true || rightHandFix == true)
+                    if (PlaceForHand(forwardCheckHit, heightCheckHit, true) == true || PlaceForHand(forwardCheckHit, heightCheckHit, false) == true)
                     {
-                        if (leftHandFix == false)
+                        if (PlaceForHand(forwardCheckHit, heightCheckHit, true) == false)
                         {
-                            leftHandPos += rightNormal * (handsSpace / 2);
-                            rightHandPos += rightNormal * (handsSpace / 2);
+                            leftHandPos += -Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized * (handsSpace / 2);
+                            rightHandPos += -Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized * (handsSpace / 2);
                         }
-                        if (rightHandFix == false)
+                        if (PlaceForHand(forwardCheckHit, heightCheckHit, false) == false)
                         {
-                            leftHandPos += leftNormal * (handsSpace / 2);
-                            rightHandPos += leftNormal * (handsSpace / 2);
+                            leftHandPos += Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized * (handsSpace / 2);
+                            rightHandPos += Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized * (handsSpace / 2);
                         }
                     }
 
 
-
-                    Debug.DrawLine(forwardCheckHit.point, leftHandPos, Color.cyan);
-                    // Debug.DrawRay(forwardCheckHit.point + leftNormal / 2, Vector3.up * (heightCheckHit.point.y - forwardCheckHit.point.y), Color.cyan);
-
+                    Debug.DrawLine(forwardCheckHit.point, leftHandPos, Color.cyan);                  
                     Debug.DrawLine(forwardCheckHit.point, rightHandPos, Color.cyan);
-                    // Debug.DrawRay(forwardCheckHit.point + rightNormal / 2, Vector3.up *(heightCheckHit.point.y - forwardCheckHit.point.y), Color.cyan);
                 }
+
+
+                Debug.DrawRay(heightCheckOrigin, Vector3.down * 5, Color.cyan);
             }                         
         }
         else
@@ -299,6 +240,49 @@ public class PlayerController : MonoBehaviour
         }
 
         return obstacleForward;
+    }
+
+    public bool PlaceForHand(RaycastHit obstacleHit, RaycastHit heightHit, bool leftHand)
+    {
+        bool value = false;
+
+        Vector3 leftNormal = Vector3.Cross(obstacleHit.normal, Vector3.up).normalized;
+        leftHandPos = obstacleHit.point + leftNormal * (handsSpace / 2);
+        leftHandPos.y = heightHit.point.y;
+
+        Vector3 rightNormal = -Vector3.Cross(obstacleHit.normal, Vector3.up).normalized;
+        rightHandPos = obstacleHit.point + rightNormal * (handsSpace / 2);
+        rightHandPos.y = heightHit.point.y;
+
+        RaycastHit firstCheckHit;
+        Vector3 origin = -obstacleHit.normal / 3;
+        origin.y = 0;
+        origin += (leftHand ? leftHandPos : rightHandPos) + (Vector3.up / 2);
+        Debug.DrawRay(origin, Vector3.down * 1, Color.cyan);
+        if (Physics.Raycast(origin, Vector3.down, out firstCheckHit, 1, LayerMask.GetMask("Default")))
+        {
+            if (firstCheckHit.point.y == heightHit.point.y)
+            {
+                value = true;
+            }
+        }
+        else
+            value = false;
+
+        RaycastHit secondCheckHit;
+        origin += obstacleHit.normal / 1.5f;
+        Debug.DrawRay(origin, Vector3.down * (heightHit.point.y - obstacleHit.point.y + 0.5f), Color.cyan);
+        if (Physics.Raycast(origin, Vector3.down, out secondCheckHit, heightHit.point.y - obstacleHit.point.y + 0.5f, LayerMask.GetMask("Default")))
+        {
+            value = false;
+        }
+
+        if (leftHand)
+            leftHandFix = value;
+        else
+            rightHandFix = value;
+
+        return value;
     }
 
 
@@ -334,11 +318,12 @@ public class PlayerController : MonoBehaviour
     private Vector3 targetDir;
     public Vector3 TargetDirection(bool notRotTransform = false, bool baseOnlyOnCam = false)
     {
-        float horizontal = Input.GetAxis("Horizontal");
-        float vertical = Input.GetAxis("Vertical");
+        float horizontal = Input.GetAxisRaw("Horizontal");
+        float vertical = Input.GetAxisRaw("Vertical");
 
         if (!baseOnlyOnCam)
         {
+  
             targetDir = (notRotTransform ? noRotCamTransform.forward : camTransform.forward) * vertical;
             targetDir += (notRotTransform ? noRotCamTransform.right : camTransform.right) * horizontal;
             targetDir.y = 0;
@@ -348,9 +333,9 @@ public class PlayerController : MonoBehaviour
             targetDir = (notRotTransform ? noRotCamTransform.forward : camTransform.forward);
         }
    
+       
 
-
-        return targetDir;
+        return targetDir.normalized;
     }
 
     //Renvois le MoveAmount pour les animations
@@ -361,11 +346,16 @@ public class PlayerController : MonoBehaviour
 
         Vector3 targetDir = TargetDirection();
         if (TouchMovingInput())
-        {      
-            if (!Sprint())
-                targetMoveAmount = Vector3.Magnitude(targetDir);
+        {
+            if (canSprint)
+            {
+                if (!Sprint())
+                    targetMoveAmount = Vector3.Magnitude(targetDir);
+                else
+                    targetMoveAmount = 2;
+            }
             else
-                targetMoveAmount = canSprint ? 2 : Vector3.Magnitude(targetDir);
+                targetMoveAmount = Vector3.Magnitude(targetDir);
         }
         else
             targetMoveAmount = 0;
