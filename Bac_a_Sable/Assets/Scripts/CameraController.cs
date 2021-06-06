@@ -223,6 +223,7 @@ public class CameraController : MonoBehaviour
 		transform.rotation = rotation;
 
 		rotation.x = 0;
+		rotation.z = 0;
 		noRotCamTransform.rotation = rotation;
 	}
 
