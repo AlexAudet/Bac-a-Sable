@@ -7,79 +7,53 @@ using RootMotion.FinalIK;
 
 public class PlayerController : MonoBehaviour
 {
-    [Space(50)]
-    public string SprintInput = "Sprint";
-    public string AimInput = "LockOn";
-    public string JumpImput = "Jump";
-    public string RollInput = "";
-    [Space(50)]
     //si on affiche les Ray debug ou non
-    public bool showDebug = false;                 
-    //le point que le player regarde
-    public Transform lookTarget;
-    //le point que la main gauche se fixe
-    public Transform leftHandTransform;
-    //le point que la main droite se fixe
-    public Transform rightHandTransform;
-    //le point que la main gauche se fixe
-    public Transform leftFootTransform;
-    //le point que la main droite se fixe
-    public Transform rightFootransform;
+    public bool showDebug = false;
 
+    //Class avec les nom des input pour le input manager
+    [FoldoutGroup("Input Name", false)]
+    [PropertySpace(10,10)]
+    [HideLabel]
+    [Indent]
+    public InputName InputName;
 
+    //Class avec les reference de transform pour le IK
+    [FoldoutGroup("IK References", false)]
+    [PropertySpace(10, 10)]
+    [HideLabel]
+    [Indent]
+    public IKTransformRef IkRef;
 
-    [Space(20)]
-    // speed multiply du joueur
-    public float speed = 1;
-    // sprint speed multiply du joueur
-    public float sprintSpeed = 1;
-    // l'acceleleration du joueur
-    public float acceleration = 4;
-    // la vitesse de rotation du joueur
-    public float rotationSpeed = 5;
-    //La vitesse a que la hauteur du joueur s'adapte au sol
-    public float heightFromGroundAdaptation = 20;
-    //la force de la gravité si le joueur ne touche pas le sol
-    public float gravityForce = 9;
+    //Class avec les attributs de movement
+    [FoldoutGroup("Movement Variable", false)]
+    [PropertySpace(10, 10)]
+    [HideLabel]
+    [Indent]
+    public MovementAttribut Movement;
 
+    //Class avec les attributs de movement sur les slope
+    [FoldoutGroup("On Slope Movement Variable", false)]
+    [PropertySpace(10, 10)]
+    [Indent]
+    public bool slopeAffectMovement;
+    [FoldoutGroup("On Slope Movement Variable")]
+    [ShowIf("@this.slopeAffectMovement == true")]
+    [PropertySpace(0, 10)]
+    [HideLabel]
+    [Indent]
+    public OnSlopeAttribut OnSlope;
 
-    [Space(20)]
-    public float jumpUpForce = 3;
-    public float jumpForwardForce = 4.5f;
-    public int airJumpAmount = 2;
-    public float airControlSpeed = 5;
-    public float rollDistanceMultiply = 2;
-
-
-    [Space(20)]
-    // la distance que le player check si il est face a un mur ou non
-    public float forwardObstacleCheckDistance = 3f;
-    // A partir de quelle distance le player est considéré dans les airs
-    public float groundCheckDistance = 0.5f;
-    // A partir de quelle distance le player est considéré dans les airs
-    public float airGroundCheckDistance = 0.1f;
-
-    [Header("Slope")]
-    public float maxSlopeWalkable = 35f;
-    public float minSlopeAffectSpeed = 15;
-    public float overSlopeDecceleration = 3;
-    public float slideingAcceleration = 0.5f;
-    public Vector2 slidingSpeedRange = new Vector2(2,15);
-    
-   
-    [Header("Slope Settings")]               
-    public float startDistanceFromBottom = 0.2f;   
-    public float sphereCastRadius = 0.25f;
-    public float sphereCastDistance = 0.75f;       
-    public float raycastLength = 0.75f;
-    public Vector3 rayOriginOffset1 = new Vector3(-0.2f, 0f, 0.16f);
-    public Vector3 rayOriginOffset2 = new Vector3(0.2f, 0f, -0.16f);
-
-    [Header("Wall climb")]
-    public float handsSpace = 1;
-    public float hangDistanceFromTop = 1;
-    public float hangDistanceFromWall = 1;
-    public float distanceFromWallToHang = 1;
+    //Class avec les attributs de climb sur les murs
+    [FoldoutGroup("Wall Climb Variable", false)]
+    [PropertySpace(10, 10)]
+    [Indent]
+    public bool canClimbWall;
+    [FoldoutGroup("Wall Climb Variable")]
+    [ShowIf("@this.canClimbWall == true")]
+    [PropertySpace(0, 10)]
+    [HideLabel]
+    [Indent]
+    public WallClimbAttribut WallClimb;
 
 
     #region privateVariable
@@ -120,6 +94,7 @@ public class PlayerController : MonoBehaviour
     private void FixedUpdate()
     {
         ObstacleForward();
+        CheckIfGrounded();
     }
 
 
@@ -128,15 +103,14 @@ public class PlayerController : MonoBehaviour
         if (showDebug)
         {
             // Visualize SphereCast with two spheres and a line
-            Vector3 startPoint = new Vector3(transform.position.x, transform.position.y - (2 / 2) + startDistanceFromBottom, transform.position.z);
-            Vector3 endPoint = new Vector3(transform.position.x, transform.position.y - (2 / 2) + startDistanceFromBottom - sphereCastDistance, transform.position.z);
+            Vector3 startPoint = new Vector3(transform.position.x, transform.position.y - (2 / 2) + OnSlope.startDistanceFromBottom, transform.position.z);
+            Vector3 endPoint = new Vector3(transform.position.x, transform.position.y - (2 / 2) + OnSlope.startDistanceFromBottom - OnSlope.sphereCastDistance, transform.position.z);
 
-            Gizmos.color = Color.white;
-            Gizmos.DrawWireSphere(startPoint, sphereCastRadius);
+            Gizmos.color = Color.blue;
+            Gizmos.DrawWireSphere(transform.position, OnSlope.sphereCastRadius);
+          
 
-            Gizmos.color = Color.gray;
-            Gizmos.DrawWireSphere(endPoint, sphereCastRadius);
-
+            Gizmos.color = Color.blue;
             Gizmos.DrawLine(startPoint, endPoint);
 
            
@@ -162,25 +136,19 @@ public class PlayerController : MonoBehaviour
     //Regarde si on est en train de viser
     public bool OnAiming()
     {
-        return Input.GetButton(AimInput);
+        return Input.GetButton(InputName.AimInput);
     }
 
     //Regarde si on est en train de sauter
     public bool Jump()
     {
-        return Input.GetButtonDown(JumpImput);
+        return Input.GetButtonDown(InputName.JumpImput);
     }
 
     //Regarde si on est en train de Rouller
     public bool Roll()
     {
-        return Input.GetButtonDown(RollInput);
-    }
-
-    //Regarde si on est en train de sprinter
-    public bool Sprint()
-    {
-        return Input.GetButton(SprintInput);
+        return Input.GetButtonDown(InputName.RollInput);
     }
 
     //Check si on touche les moving Input en regardant le rawAxis
@@ -197,8 +165,8 @@ public class PlayerController : MonoBehaviour
 
 
     // Regarde si il y a un obstacle devant le player
-    public bool leftHandFix;
-    public bool rightHandFix;
+    private bool leftHandFix;
+    private bool rightHandFix;
     public ObstacleForwardData obstacleData = new ObstacleForwardData();
     public ObstacleForwardData ObstacleForward()
     {
@@ -219,12 +187,12 @@ public class PlayerController : MonoBehaviour
       // }
 
 
-        Debug.DrawRay(forwardCheckOrigin, forwardCheckDirection * forwardObstacleCheckDistance, Color.cyan);
+        Debug.DrawRay(forwardCheckOrigin, forwardCheckDirection * Movement.forwardObstacleCheckDistance, Color.cyan);
 
   
         RaycastHit forwardCheckHit;
         // regarde devant le joueur si il y a un mur
-        if (Physics.Raycast(forwardCheckOrigin, forwardCheckDirection, out forwardCheckHit, forwardObstacleCheckDistance))
+        if (Physics.Raycast(forwardCheckOrigin, forwardCheckDirection, out forwardCheckHit, Movement.forwardObstacleCheckDistance))
         {
             obstacleData.distance = Vector3.Distance(forwardCheckOrigin, forwardCheckHit.point);
             obstacleData.playerHangdAngle = -forwardCheckHit.normal;
@@ -252,12 +220,12 @@ public class PlayerController : MonoBehaviour
 
                 //donne la direction gauche de la normal de l'obstacle
                 Vector3 leftNormal = -Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
-                obstacleData.leftHandPos = forwardCheckHit.point + leftNormal * (handsSpace / 2);
+                obstacleData.leftHandPos = forwardCheckHit.point + leftNormal * (WallClimb.handsSpace / 2);
                 obstacleData.leftHandPos.y = heightCheckHit.point.y;
             
                 //donne la direction droite de la normal de l'obstacle
                 Vector3 rightNormal = Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
-                obstacleData.rightHandPos = forwardCheckHit.point + rightNormal * (handsSpace / 2);
+                obstacleData.rightHandPos = forwardCheckHit.point + rightNormal * (WallClimb.handsSpace / 2);
                 obstacleData.rightHandPos.y = heightCheckHit.point.y;
             
                 #region First Hands Place Check
@@ -344,23 +312,23 @@ public class PlayerController : MonoBehaviour
                 bool recheck = false;
                 if (rightHandFix == false && leftHandFix == true)
                 {
-                    obstacleData.playerOnPos += leftNormal * (handsSpace / 2);
-                    obstacleData.leftHandPos += leftNormal * (handsSpace / 2);
-                    obstacleData.rightHandPos += leftNormal * (handsSpace / 2);
+                    obstacleData.playerOnPos += leftNormal * (WallClimb.handsSpace / 2);
+                    obstacleData.leftHandPos += leftNormal * (WallClimb.handsSpace / 2);
+                    obstacleData.rightHandPos += leftNormal * (WallClimb.handsSpace / 2);
             
-                    leftOrigin += leftNormal * (handsSpace / 2);
-                    rightOrigin += leftNormal * (handsSpace / 2);
+                    leftOrigin += leftNormal * (WallClimb.handsSpace / 2);
+                    rightOrigin += leftNormal * (WallClimb.handsSpace / 2);
 
                     recheck = true;
                 }
                 else if (leftHandFix == false && rightHandFix == true)
                 {
-                    obstacleData.playerOnPos += rightNormal * (handsSpace / 2);
-                    obstacleData.leftHandPos += rightNormal * (handsSpace / 2);
-                    obstacleData.rightHandPos += rightNormal * (handsSpace / 2);
+                    obstacleData.playerOnPos += rightNormal * (WallClimb.handsSpace / 2);
+                    obstacleData.leftHandPos += rightNormal * (WallClimb.handsSpace / 2);
+                    obstacleData.rightHandPos += rightNormal * (WallClimb.handsSpace / 2);
             
-                    leftOrigin += rightNormal * (handsSpace / 2);
-                    rightOrigin += rightNormal * (handsSpace / 2);
+                    leftOrigin += rightNormal * (WallClimb.handsSpace / 2);
+                    rightOrigin += rightNormal * (WallClimb.handsSpace / 2);
 
                     recheck = true;
                 }
@@ -450,8 +418,8 @@ public class PlayerController : MonoBehaviour
                     obstacleData.leftHandPos.y = leftCheckHit.point.y;
                     obstacleData.rightHandPos.y = rightCheckHit.point.y;
                     obstacleData.playerHangPos = Vector3.Lerp(obstacleData.leftHandPos, obstacleData.rightHandPos, 0.5f);
-                    obstacleData.playerHangPos += forwardCheckHit.normal * hangDistanceFromWall;
-                    obstacleData.playerHangPos.y -= hangDistanceFromTop;
+                    obstacleData.playerHangPos += forwardCheckHit.normal * WallClimb.hangDistanceFromWall;
+                    obstacleData.playerHangPos.y -= WallClimb.hangDistanceFromTop;
                 }
                 else
                 {
@@ -497,7 +465,7 @@ public class PlayerController : MonoBehaviour
                 Quaternion tr = Quaternion.LookRotation(targetDir);
                 targetRotation = Quaternion.Slerp(
                    transform.rotation, tr,
-                    Time.deltaTime * rotationSpeed);
+                    Time.deltaTime * Movement.rotationSpeed);
             }
         }
         else
@@ -535,27 +503,19 @@ public class PlayerController : MonoBehaviour
 
     //Renvois le MoveAmount pour les animations
     private float currentMoveAmount;
-    public float MoveAmount(bool canSprint = false)
+    public float MoveAmount()
     {
         float targetMoveAmount;
 
         Vector3 targetDir = TargetDirection();
         if (TouchMovingInput())
         {
-            if (canSprint)
-            {
-                if (!Sprint())
-                    targetMoveAmount = Vector3.Magnitude(targetDir);
-                else
-                    targetMoveAmount = 2;
-            }
-            else
-                targetMoveAmount = Vector3.Magnitude(targetDir);
+            targetMoveAmount = Vector3.Magnitude(targetDir);
         }
         else
             targetMoveAmount = 0;
 
-        currentMoveAmount = Mathf.Lerp(currentMoveAmount, targetMoveAmount, Time.deltaTime * acceleration);
+        currentMoveAmount = Mathf.Lerp(currentMoveAmount, targetMoveAmount, Time.deltaTime * Movement.acceleration);
 
         return currentMoveAmount;
     }
@@ -569,29 +529,26 @@ public class PlayerController : MonoBehaviour
         Vector3 targetDir = TargetDirection();
         if (TouchMovingInput())
         {
-            if (!Sprint())
-                targetMoveAmount = Vector3.Magnitude(targetDir);
-            else
-                targetMoveAmount = canSprint ? 2 : Vector3.Magnitude(targetDir);
+            targetMoveAmount = Vector3.Magnitude(targetDir);
         }
         else
             targetMoveAmount = 0;
 
         float slopDotDirection = Remap(Mathf.Clamp(slopeData.slopeDotDirection, -1, 0), -1, 0, 0, 1);
-        slopeMoveAmount = Mathf.Clamp(Remap(slopeData.slopeAngle, minSlopeAffectSpeed, maxSlopeWalkable, 1, 0), 0, 1);
+        slopeMoveAmount = Mathf.Clamp(Remap(slopeData.slopeAngle, OnSlope.minSlopeAffectSpeed, OnSlope.maxSlopeWalkable, 1, 0), 0, 1);
         slopeMoveAmount = Mathf.Clamp(slopeMoveAmount + slopDotDirection, 0, 1);
         slopeMoveAmount *= targetMoveAmount;
 
-        if (slopeData.slopeAngle < maxSlopeWalkable)
+        if (slopeData.slopeAngle < OnSlope.maxSlopeWalkable)
         {
             if (slopeData.slopeDotDirection < 1)
-                currentMoveAmount = Mathf.Lerp(currentMoveAmount, slopeMoveAmount, Time.deltaTime * overSlopeDecceleration);
+                currentMoveAmount = Mathf.Lerp(currentMoveAmount, slopeMoveAmount, Time.deltaTime * OnSlope.overSlopeDecceleration);
             else
-                currentMoveAmount = Mathf.Lerp(currentMoveAmount, targetMoveAmount * Remap(slopeData.slopeAngle, minSlopeAffectSpeed, 
-                    maxSlopeWalkable, 1, 2), Time.unscaledDeltaTime * rotationSpeed);
+                currentMoveAmount = Mathf.Lerp(currentMoveAmount, targetMoveAmount * Remap(slopeData.slopeAngle, OnSlope.minSlopeAffectSpeed,
+                    OnSlope.maxSlopeWalkable, 1, 2), Time.unscaledDeltaTime * Movement.rotationSpeed);
         }
         else
-            currentMoveAmount = Mathf.Lerp(currentMoveAmount, 0, Time.unscaledDeltaTime * overSlopeDecceleration);
+            currentMoveAmount = Mathf.Lerp(currentMoveAmount, 0, Time.unscaledDeltaTime * OnSlope.overSlopeDecceleration);
 
         return currentMoveAmount;
     }
@@ -620,9 +577,9 @@ public class PlayerController : MonoBehaviour
     //Set la position du LookTarget pour que la tete du player tourne dans la direction avec le component LookAtIk
     public void LookTarget()
     {
-        Vector3 lookTargetPosition = Vector3.Lerp(lookTarget.position, (anim.GetBoneTransform(HumanBodyBones.Head).position + camTransform.transform.forward * 10), Time.deltaTime * 8);
+        Vector3 lookTargetPosition = Vector3.Lerp(IkRef.lookTarget.position, (anim.GetBoneTransform(HumanBodyBones.Head).position + camTransform.transform.forward * 10), Time.deltaTime * 8);
         lookTargetPosition.y = anim.GetBoneTransform(HumanBodyBones.Head).position.y;
-        lookTarget.position = lookTargetPosition;
+        IkRef.lookTarget.position = lookTargetPosition;
     }
 
 
@@ -654,10 +611,11 @@ public class PlayerController : MonoBehaviour
 
 
     //Check si le player touche au sol
-    public bool grounded = false;
+    [HideInInspector] public bool grounded = false;
     private Vector3 groundPosition;
     public void CheckIfGrounded()
-    {     
+    {
+
         Vector3 dir = -Vector3.up;
 
         Vector3 origin = transform.position;
@@ -667,11 +625,11 @@ public class PlayerController : MonoBehaviour
 
         if (grounded)
         {
-            dis = groundCheckDistance + 2;
+            dis = Movement.groundCheckDistance + 2;
         }
         else
         {
-            dis = airGroundCheckDistance * Vector3.Dot(Vector3.up, transform.up) + 2;
+            dis = Movement.airGroundCheckDistance * Vector3.Dot(Vector3.up, transform.up) + 2;
         }
 
         Debug.DrawRay(origin, dir * dis, Color.blue);
@@ -697,17 +655,19 @@ public class PlayerController : MonoBehaviour
         {
             Vector3 heightPos = transform.position;
             heightPos.y = groundPosition.y;
-            transform.position = Vector3.Lerp(transform.position, heightPos, Time.deltaTime * heightFromGroundAdaptation);
+            transform.position = Vector3.Lerp(transform.position, heightPos, Time.deltaTime * Movement.heightAdaptationSpeed);
         }
     }
 
 
     //Check l'inclinaison du sol et determine si on la monde ou descent
     [HideInInspector] public OnSlopeData groundSlopeDataResult = new OnSlopeData();
-    public OnSlopeData CheckGroundSlope(Vector3 origin)
+    public OnSlopeData CheckGroundSlope()
     {
+        Vector3 origin = transform.position;
+
         RaycastHit hit;
-        if (Physics.SphereCast(origin, sphereCastRadius, Vector3.down, out hit, sphereCastDistance))
+        if (Physics.SphereCast(origin, OnSlope.sphereCastRadius, Vector3.down, out hit, OnSlope.sphereCastDistance))
         {
             groundSlopeDataResult.slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
             Vector3 temp = Vector3.Cross(hit.normal, Vector3.down);
@@ -716,16 +676,16 @@ public class PlayerController : MonoBehaviour
         RaycastHit slopeHit1;
         RaycastHit slopeHit2;
 
-        if (Physics.Raycast(origin + rayOriginOffset1, Vector3.down, out slopeHit1, raycastLength))
+        if (Physics.Raycast(origin + OnSlope.rayOriginOffset1, Vector3.down, out slopeHit1, OnSlope.raycastLength))
         {
-            if (showDebug) { Debug.DrawLine(origin + rayOriginOffset1, slopeHit1.point, Color.red); }
+            if (showDebug) { Debug.DrawLine(origin + OnSlope.rayOriginOffset1, slopeHit1.point, Color.red); }
 
             float angleOne = Vector3.Angle(slopeHit1.normal, Vector3.up);
 
-            if (Physics.Raycast(origin + rayOriginOffset2, Vector3.down, out slopeHit2, raycastLength))
+            if (Physics.Raycast(origin + OnSlope.rayOriginOffset2, Vector3.down, out slopeHit2, OnSlope.raycastLength))
             {
 
-                if (showDebug) { Debug.DrawLine(origin + rayOriginOffset2, slopeHit2.point, Color.red); }
+                if (showDebug) { Debug.DrawLine(origin + OnSlope.rayOriginOffset2, slopeHit2.point, Color.red); }
 
                 float angleTwo = Vector3.Angle(slopeHit2.normal, Vector3.up);
 
@@ -781,7 +741,7 @@ public class PlayerController : MonoBehaviour
 
   
 }
-
+[System.Serializable]
 public class OnSlopeData
 {
     public float slopeAngle;
@@ -801,4 +761,134 @@ public class ObstacleForwardData
     public Vector3 playerOnPos;
     public Vector3 leftHandPos;
     public Vector3 rightHandPos;
+}
+
+[System.Serializable]
+public class IKTransformRef
+{
+    //le point que le player regarde
+    [PropertySpace(0,10)]
+    public Transform lookTarget;
+
+    //le point que la main gauche se fixe
+    [PropertySpace(0, 5)]
+    public Transform leftHandTransform;
+
+    //le point que la main droite se fixe
+    [PropertySpace(0, 10)]
+    public Transform rightHandTransform;
+
+    //le point que la main gauche se fixe
+    [PropertySpace(0, 5)]
+    public Transform leftFootTransform;
+
+    //le point que la main droite se fixe
+    public Transform rightFootransform;
+}
+
+[System.Serializable]
+public class InputName
+{
+    [PropertySpace(0, 5)]
+    public string AimInput = "Aim";
+
+    [PropertySpace(0, 5)]
+    public string JumpImput = "Jump";
+
+    [PropertySpace(0, 5)]
+    public string RollInput = "Roll";
+}
+
+[System.Serializable]
+public class MovementAttribut
+{
+    [Title("Speed", TitleAlignment = TitleAlignments.Centered)]
+    // speed multiply du joueur
+    [PropertySpace(0,5), Range(1,5)]
+    public float speed = 1;
+    // l'acceleleration du joueur
+    [PropertySpace(0, 5), Range(1, 10)]
+    public float acceleration = 4;
+    // la vitesse de rotation du joueur
+    [PropertySpace(0, 5), Range(1, 10)]
+    public float rotationSpeed = 5;
+    //La vitesse a que la hauteur du joueur s'adapte au sol
+    [PropertySpace(0, 5), Range(1, 100)]
+    public float heightAdaptationSpeed = 20;
+    //Multiplicateur du rootmotion des animations de roulade
+    [PropertySpace(0, 5), Range(1, 5)]
+    public float rollDistanceMultiply = 2;
+
+
+
+    [Title("Jump And In Air", TitleAlignment = TitleAlignments.Centered)]
+    //Force des Saut en hauteur
+    [PropertySpace(0, 5), Range(1, 20)]
+    public float jumpUpForce = 3;
+    //Force des Saut en avant
+    [PropertySpace(0, 5), Range(1, 10)]
+    public float jumpForwardForce = 4.5f;
+    //le nombre de saut que l'on peut faire dans les air
+    [PropertySpace(0, 5), Range(1, 10)]
+    public int airJumpAmount = 2;
+    //la vitesse d'acceleration pour bouger dans les airs
+    [PropertySpace(0, 5), Range(1, 100)]
+    public float airControlSpeed = 5;
+    //la force de la gravité si le joueur ne touche pas le sol
+    [PropertySpace(0, 5), Range(-10, 0)]
+    public float gravityForce = -5;
+
+
+    [Title("Raycast Checker Distance", TitleAlignment = TitleAlignments.Centered)]
+    // la distance que le player check si il est face a un mur ou non
+    [PropertySpace(0, 5)]
+    public float forwardObstacleCheckDistance = 3f;
+    // A partir de quelle distance le player est considéré dans les airs
+    [PropertySpace(0, 5)]
+    public float groundCheckDistance = 0.5f;
+    // A partir de quelle distance le player est considéré dans les airs
+    [PropertySpace(0, 5)]
+    public float airGroundCheckDistance = 0.1f;
+}
+
+[System.Serializable]
+public class OnSlopeAttribut
+{
+    //l'angle maximum que l'on peut monter
+    public float maxSlopeWalkable = 35f;
+    //l'angle minimum qui affecte la vitesse de déplacement
+    public float minSlopeAffectSpeed = 15;
+    //la vitesse de decceleration sur les slopes
+    public float overSlopeDecceleration = 3;
+
+    //Est-ce qu'on peut glisser lorsque que l'angle du slope est plus grande que maxSlopeWalkable
+    public bool canSlide;
+    //l'acceleration du glissement 
+    public float slideingAcceleration = 0.5f;
+    //range de vitesse de glissement (si angle = maxSlopeWalkable = minimum vitesse / angle 90 degré = maximum vitesse)
+    public Vector2 slidingSpeedRange = new Vector2(2, 15);
+
+    [Space(20)]
+    public float startDistanceFromBottom = 0.2f;
+    public float sphereCastRadius = 0.5f;
+    public float sphereCastDistance = 0.2f;
+    public float raycastLength = 1f;
+    public Vector3 rayOriginOffset1 = new Vector3(-0.2f, 0.5f, 0.16f);
+    public Vector3 rayOriginOffset2 = new Vector3(0.2f, 0.5f, -0.16f);
+
+}
+
+[System.Serializable]
+public class WallClimbAttribut
+{
+    //Distance entre les main lorsque qu'on est sur un mur
+    public float handsSpace = 1;
+    //La distance que le joueur se tien du top du mur lorsqu'il est accrocher sur le rebord
+    public float hangDistanceFromTop = 1.7f;
+    //La distance que le joueur se tien du du mur lorsqu'il est accrocher sur le rebord
+    public float hangDistanceFromWall = 0.5f;
+    //la distance maximum du top du mur pour pouvoir s'accrocher au rebord
+    public float distanceFromTopToHang = 2;
+    //la distance maximum du mur pour pouvoir s'accrocher au rebord
+    public float distanceFromWallToHang = 1;
 }
