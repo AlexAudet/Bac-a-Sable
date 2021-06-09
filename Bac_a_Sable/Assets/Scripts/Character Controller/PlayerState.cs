@@ -41,6 +41,11 @@ public class PlayerState
         return this;
     }
 
+    public virtual void FixedUpdate()
+    {
+
+    }
+
     public float Remap(float value, float from1, float to1, float from2, float to2)
     {
         return (value - from1) / (to1 - from1) * (to2 - from2) + from2;
@@ -124,7 +129,7 @@ public class NormalMovement : PlayerState
         {
             Vector3 jumpDirection = Vector3.up * player.Movement.jumpUpForce;
             jumpDirection += player.transform.forward * 4.5f * (moveAmount * 2) * player.Movement.speed;
-            nextState = new Jump(player, anim, jumpDirection, false);
+            nextState = new Jump(player, anim, jumpDirection);
             stage = EVENT.EXIT;
         }
 
@@ -133,7 +138,6 @@ public class NormalMovement : PlayerState
         player.CheckIfGrounded();
         if (player.grounded == false)
         {
-
             player.rigid.isKinematic = false;
             anim.SetBool("IsGrounded", false);
             anim.SetBool("IsRolling", false);
@@ -146,6 +150,12 @@ public class NormalMovement : PlayerState
             nextState = new NotGrounded(player, anim);
             stage = EVENT.EXIT;
         }
+    }
+
+    public override void FixedUpdate()
+    {
+
+        player.ObstacleForward();
     }
 
     public override void Exit()
@@ -192,6 +202,12 @@ public class LockOnMovement : PlayerState
         player.IkRef.lookTarget.position = Vector3.Lerp(player.IkRef.lookTarget.position, (player.camTransform.position + player.camTransform.forward * 10), Time.deltaTime * 8);
     }
 
+    public override void FixedUpdate()
+    {
+        player.CheckIfGrounded();
+        player.ObstacleForward();
+    }
+
     public override void Exit()
     {
         anim.SetBool("LockOn", false);
@@ -214,7 +230,6 @@ public class Sliding : PlayerState
         base.Enter();
     }
 
-
     public override void Update()
     {
         slopeData = player.CheckGroundSlope();
@@ -230,6 +245,11 @@ public class Sliding : PlayerState
         lookDirection.y = 0;
 
         player.transform.rotation = player.TargetRotation(lookDirection, true);
+    }
+
+    public override void FixedUpdate()
+    {
+
     }
 
     public override void Exit()
@@ -257,8 +277,6 @@ public class NotGrounded : PlayerState
     }
     public override void Update()
     {
-  
-
 
         if (player.TouchMovingInput())
             velocityForce = player.TargetDirection(notRotTransform: true) * player.Movement.airControlSpeed;
@@ -280,7 +298,7 @@ public class NotGrounded : PlayerState
                 player.rigid.velocity = Vector3.zero;
                 Vector3 jumpDirection = Vector3.up * player.Movement.jumpUpForce;
                 jumpDirection += player.transform.forward * player.Movement.jumpForwardForce * (Vector3.Magnitude(player.TargetDirection(notRotTransform: true) * 2));
-                nextState = new Jump(player, anim, jumpDirection, true);
+                nextState = new Jump(player, anim, jumpDirection);
                 stage = EVENT.EXIT;
             }
 
@@ -303,14 +321,19 @@ public class NotGrounded : PlayerState
         anim.SetFloat("Forward", moveAmount);
         anim.SetFloat("FallTime", fallTimer);
 
-  
-        player.CheckIfGrounded();
+      
         if (player.grounded)
         {
             anim.SetBool("IsGrounded", true);
             nextState = new NormalMovement(player, anim);
             stage = EVENT.EXIT;
         }
+    }
+
+    public override void FixedUpdate()
+    {
+        player.CheckIfGrounded();
+        player.ObstacleForward(); 
     }
 
     public override void Exit()
@@ -322,10 +345,9 @@ public class NotGrounded : PlayerState
 
 public class Jump : PlayerState
 {
-    public Jump(PlayerController _player, Animator _anim, Vector3 _jumpDirection, bool _otherJump)
-        : base(_player, _anim) { jumpDirection = _jumpDirection; otherJump = _otherJump; }
+    public Jump(PlayerController _player, Animator _anim, Vector3 _jumpDirection)
+        : base(_player, _anim) { jumpDirection = _jumpDirection; }
 
-    bool otherJump;
     float timer;
     float fallTimer;
 
@@ -337,10 +359,25 @@ public class Jump : PlayerState
         CameraController.Instance.updateMode = CameraController.UpdateMode.FixedUpdate;
         player.rigid.isKinematic = false;
         player.rigid.velocity = Vector3.zero;
-        player.currentAirJumpAmount++;
 
-        anim.SetBool("Jump", !otherJump);
-        anim.SetBool("OtherJump", otherJump);
+        switch (player.currentAirJumpAmount)
+        {
+            case 1:
+                anim.CrossFade("Jump_1", 0.1f);
+                break;
+            case 2:
+                anim.CrossFade("Jump_2", 0.1f);
+                break;
+            case 3:
+                anim.CrossFade("Jump_3", 0.1f);
+                break;
+            default:
+                break;
+
+        }
+
+        player.currentAirJumpAmount++;
+        anim.SetBool("Jump", true);
         anim.SetBool("IsGrounded", false);     
 
         player.rigid.AddForce(jumpDirection, ForceMode.VelocityChange);
@@ -351,7 +388,7 @@ public class Jump : PlayerState
     }
     public override void Update()
     {
-     
+
         if (player.TouchMovingInput())
             velocityForce = player.TargetDirection(notRotTransform: true) * player.Movement.airControlSpeed;
         else
@@ -370,7 +407,7 @@ public class Jump : PlayerState
                 player.rigid.velocity = Vector3.zero;
                 Vector3 jumpDirection = Vector3.up * player.Movement.jumpUpForce;
                 jumpDirection += player.transform.forward * player.Movement.jumpForwardForce * (Vector3.Magnitude(player.TargetDirection(notRotTransform:true) * 2));
-                nextState = new Jump(player, anim, jumpDirection, !otherJump);
+                nextState = new Jump(player, anim, jumpDirection);
                 stage = EVENT.EXIT;
             }
 
@@ -405,12 +442,10 @@ public class Jump : PlayerState
             
             }
         }
-  
 
         if (player.rigid.velocity.y < -0.2f || timer >= 0.2f)
         {
             anim.SetBool("Jump", false);
-            anim.SetBool("OtherJump", false);
 
             player.CheckIfGrounded();
             if (player.grounded)
@@ -419,9 +454,16 @@ public class Jump : PlayerState
                 nextState = new NormalMovement(player, anim);
                 stage = EVENT.EXIT;
             }
-        }                     
+        }
+               
     }
+    public override void FixedUpdate()
+    {
+        player.ObstacleForward();
 
+
+           
+    }
     public override void Exit()
     {
         base.Exit();
@@ -475,7 +517,7 @@ public class Hang: PlayerState
         {
             Vector3 jumpDirection = Vector3.up * player.Movement.jumpUpForce;
             jumpDirection += player.TargetDirection(notRotTransform: true) * player.Movement.jumpForwardForce * (Vector3.Magnitude(player.TargetDirection(notRotTransform: true) * 2));
-            nextState = new Jump(player, anim, jumpDirection, false);
+            nextState = new Jump(player, anim, jumpDirection);
             stage = EVENT.EXIT;
         }
     }

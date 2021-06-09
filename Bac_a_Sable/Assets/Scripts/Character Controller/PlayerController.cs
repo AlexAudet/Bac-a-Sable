@@ -11,28 +11,28 @@ public class PlayerController : MonoBehaviour
     public bool showDebug = false;
 
     //Class avec les nom des input pour le input manager
-    [FoldoutGroup("Input Name", false)]
+    [FoldoutGroup("Input Name")]
     [PropertySpace(10,10)]
     [HideLabel]
     [Indent]
     public InputName InputName;
 
     //Class avec les reference de transform pour le IK
-    [FoldoutGroup("IK References", false)]
+    [FoldoutGroup("IK References")]
     [PropertySpace(10, 10)]
     [HideLabel]
     [Indent]
     public IKTransformRef IkRef;
 
     //Class avec les attributs de movement
-    [FoldoutGroup("Movement Variable", false)]
+    [FoldoutGroup("Movement Variable")]
     [PropertySpace(10, 10)]
     [HideLabel]
     [Indent]
     public MovementAttribut Movement;
 
     //Class avec les attributs de movement sur les slope
-    [FoldoutGroup("On Slope Movement Variable", false)]
+    [FoldoutGroup("On Slope Movement Variable")]
     [PropertySpace(10, 10)]
     [Indent]
     public bool slopeAffectMovement;
@@ -44,7 +44,7 @@ public class PlayerController : MonoBehaviour
     public OnSlopeAttribut OnSlope;
 
     //Class avec les attributs de climb sur les murs
-    [FoldoutGroup("Wall Climb Variable", false)]
+    [FoldoutGroup("Wall Climb Variable")]
     [PropertySpace(10, 10)]
     [Indent]
     public bool canClimbWall;
@@ -88,13 +88,11 @@ public class PlayerController : MonoBehaviour
     {
         state = state.Process();
         StayInConrtoller();
-        ObstacleForward();
     }
 
     private void FixedUpdate()
     {
-        ObstacleForward();
-        CheckIfGrounded();
+        state.FixedUpdate();
     }
 
 
@@ -158,295 +156,12 @@ public class PlayerController : MonoBehaviour
         if (Input.GetAxisRaw("Horizontal") == 0 && Input.GetAxisRaw("Vertical") == 0) 
             result = false;
 
-        anim.SetBool("ToucheInput", result);
+        anim.SetBool("TouchInput", result);
 
         return result;
     }
 
 
-    // Regarde si il y a un obstacle devant le player
-    private bool leftHandFix;
-    private bool rightHandFix;
-    public ObstacleForwardData obstacleData = new ObstacleForwardData();
-    public ObstacleForwardData ObstacleForward()
-    {
-
-        Vector3 forwardCheckOrigin = transform.position;
-        forwardCheckOrigin.y += 1;
-
-    
-        Vector3 forwardCheckDirection = transform.forward;
-
-      // if(leftHandFix && rightHandFix)
-      // {
-      //     if (Vector3.Distance(transform.position, obstacleData.leftHandPos) > Vector3.Distance(transform.position, obstacleData.rightHandPos))
-      //         forwardCheckDirection = Vector3.Lerp(-transform.right, transform.forward, obstacleDotProduct);
-      //     else
-      //         forwardCheckDirection = Vector3.Lerp(transform.right, transform.forward, obstacleDotProduct);
-      //     forwardCheckDirection = Vector3.Lerp(forwardCheckDirection, transform.forward, 0.5f);
-      // }
-
-
-        Debug.DrawRay(forwardCheckOrigin, forwardCheckDirection * Movement.forwardObstacleCheckDistance, Color.cyan);
-
-  
-        RaycastHit forwardCheckHit;
-        // regarde devant le joueur si il y a un mur
-        if (Physics.Raycast(forwardCheckOrigin, forwardCheckDirection, out forwardCheckHit, Movement.forwardObstacleCheckDistance))
-        {
-            obstacleData.distance = Vector3.Distance(forwardCheckOrigin, forwardCheckHit.point);
-            obstacleData.playerHangdAngle = -forwardCheckHit.normal;
-            obstacleData.normal = forwardCheckHit.normal;
-
-
-            //obstacleDotProduct = Vector3.Dot(-forwardCheckHit.normal, transform.forward);
-
-            
-            Vector3 heightCheckOrigin = forwardCheckHit.point + -forwardCheckHit.normal / 2;
-            heightCheckOrigin.y += 4;
-            
-            RaycastHit heightCheckHit;
-            
-            // regarde la hauteur du mur
-            if (Physics.Raycast(heightCheckOrigin, Vector3.down, out heightCheckHit, 5))
-            {
-            
-                Vector3 leftHandSurfaceNormal;
-                Vector3 rightHandSurfaceNormal;
-            
-                obstacleData.playerOnPos = heightCheckHit.point;
-                obstacleData.relativeHeight = heightCheckHit.point.y - transform.position.y;
-
-
-                //donne la direction gauche de la normal de l'obstacle
-                Vector3 leftNormal = -Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
-                obstacleData.leftHandPos = forwardCheckHit.point + leftNormal * (WallClimb.handsSpace / 2);
-                obstacleData.leftHandPos.y = heightCheckHit.point.y;
-            
-                //donne la direction droite de la normal de l'obstacle
-                Vector3 rightNormal = Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
-                obstacleData.rightHandPos = forwardCheckHit.point + rightNormal * (WallClimb.handsSpace / 2);
-                obstacleData.rightHandPos.y = heightCheckHit.point.y;
-            
-                #region First Hands Place Check
-                /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                ///Regarde la place de la main gauche
-                RaycastHit leftCheckHit;
-                Vector3 leftOrigin = -forwardCheckHit.normal / 3;
-                leftOrigin.y = 0;
-                leftOrigin += obstacleData.leftHandPos + (Vector3.up / 2);
-
-                if (obstacleData.canBeClimb) Debug.DrawRay(leftOrigin, Vector3.down * 1, Color.cyan);
-                if (Physics.Raycast(leftOrigin, Vector3.down, out leftCheckHit, 1, LayerMask.GetMask("Default")))
-                {           
-                    if (leftCheckHit.point.y == heightCheckHit.point.y)
-                    {
-                      
-                        leftHandFix = true;
-                    }
-                    else
-                    {
-                      
-                        //regarde si les normals sont plus ou moins parreille pour savoir si c'est un angle ou un palier
-                        if (leftCheckHit.normal == heightCheckHit.normal)
-                        {
-                    
-                            leftHandFix = true;
-                        }
-                        else
-                        {
-                          
-                            leftHandFix = false;
-                        }
-                          
-                    }
-                }
-                else
-                    leftHandFix = false;
-            
-                leftOrigin += forwardCheckHit.normal / 1.5f;
-                if (obstacleData.canBeClimb) Debug.DrawRay(leftOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f), Color.cyan);
-                if (Physics.Raycast(leftOrigin, Vector3.down, heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f, LayerMask.GetMask("Default")))
-                {
-                    leftHandFix = false;
-                }
-            
-                ///Regarde la place de la main droite
-                RaycastHit rightCheckHit;
-                Vector3 rightOrigin = -forwardCheckHit.normal / 3;
-                rightOrigin.y = 0;
-                rightOrigin += obstacleData.rightHandPos + (Vector3.up / 2);
-
-                if (obstacleData.canBeClimb) Debug.DrawRay(rightOrigin, Vector3.down * 1, Color.cyan);
-                if (Physics.Raycast(rightOrigin, Vector3.down, out rightCheckHit, 1, LayerMask.GetMask("Default")))
-                {
-                    if (rightCheckHit.point.y == heightCheckHit.point.y)
-                    {
-                        rightHandFix = true;
-                    }
-                    else
-                    {
-                        //regarde si les normals sont plus ou moins parreille pour savoir si c'est un angle ou un palier
-                        if (rightCheckHit.normal == heightCheckHit.normal)
-                        {
-                            rightHandFix = true;
-                        }
-                        else
-                            rightHandFix = false;
-                    }
-                }
-                else
-                    rightHandFix = false;
-            
-                rightOrigin += forwardCheckHit.normal / 1.5f;
-                if(obstacleData.canBeClimb)Debug.DrawRay(rightOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f), Color.cyan);
-                if (Physics.Raycast(rightOrigin, Vector3.down, heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f, LayerMask.GetMask("Default")))
-                {
-                    rightHandFix = false;
-                }
-                /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                #endregion
-
-                //si les deux main sont dans le vire, le mur ne peut pas etre monté
-
-                bool recheck = false;
-                if (rightHandFix == false && leftHandFix == true)
-                {
-                    obstacleData.playerOnPos += leftNormal * (WallClimb.handsSpace / 2);
-                    obstacleData.leftHandPos += leftNormal * (WallClimb.handsSpace / 2);
-                    obstacleData.rightHandPos += leftNormal * (WallClimb.handsSpace / 2);
-            
-                    leftOrigin += leftNormal * (WallClimb.handsSpace / 2);
-                    rightOrigin += leftNormal * (WallClimb.handsSpace / 2);
-
-                    recheck = true;
-                }
-                else if (leftHandFix == false && rightHandFix == true)
-                {
-                    obstacleData.playerOnPos += rightNormal * (WallClimb.handsSpace / 2);
-                    obstacleData.leftHandPos += rightNormal * (WallClimb.handsSpace / 2);
-                    obstacleData.rightHandPos += rightNormal * (WallClimb.handsSpace / 2);
-            
-                    leftOrigin += rightNormal * (WallClimb.handsSpace / 2);
-                    rightOrigin += rightNormal * (WallClimb.handsSpace / 2);
-
-                    recheck = true;
-                }
-
-
-                if (recheck)
-                {
-                    #region Second Hands Place Check
-                    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                    ///Regarde la place de la main gauche
-                    leftOrigin -= forwardCheckHit.normal / 1.5f;
-                    leftOrigin += Vector3.up * 2;
-                    if (obstacleData.canBeClimb) Debug.DrawRay(leftOrigin, Vector3.down * 4, Color.red);
-                    if (Physics.Raycast(leftOrigin, Vector3.down, out leftCheckHit, 4, LayerMask.GetMask("Default")))
-                    {
-                        leftHandSurfaceNormal = leftCheckHit.normal;
-
-                        //si la hauteur est pareille ca veut dire que c'est droit
-                        if (leftCheckHit.point.y == heightCheckHit.point.y)
-                        {
-                            leftHandFix = true;
-                        }
-                        else
-                        {
-                            //regarde si les normals sont plus ou moins parreille pour savoir si c'est un angle ou un palier
-                            if (leftCheckHit.normal == heightCheckHit.normal)
-                            {
-                                leftHandFix = true;
-                            }
-                            else
-                                leftHandFix = false;
-                        }
-                    }
-                    else
-                        leftHandFix = false;
-
-                    leftOrigin += forwardCheckHit.normal / 1.5f;
-                    if (obstacleData.canBeClimb) Debug.DrawRay(leftOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 3.5f), Color.red);
-                    if (Physics.Raycast(leftOrigin, Vector3.down, heightCheckHit.point.y - forwardCheckHit.point.y + 3.5f, LayerMask.GetMask("Default")))
-                    {
-                        leftHandFix = false;
-                    }
-
-                    ///Regarde la place de la main droite
-                    rightOrigin -= forwardCheckHit.normal / 1.5f;
-                    rightOrigin += Vector3.up * 2;
-                    if (obstacleData.canBeClimb) Debug.DrawRay(rightOrigin, Vector3.down * 4, Color.red);
-                    if (Physics.Raycast(rightOrigin, Vector3.down, out rightCheckHit, 4, LayerMask.GetMask("Default")))
-                    {
-                        rightHandSurfaceNormal = rightCheckHit.normal;
-
-                        //si la hauteur est pareille ca veut dire que c'est droit
-                        if (rightCheckHit.point.y == heightCheckHit.point.y)
-                        {
-                            rightHandFix = true;
-                        }
-                        else
-                        {
-                            //regarde si les normals sont plus ou moins parreille pour savoir si c'est un angle ou un palier
-                            if (rightCheckHit.normal == heightCheckHit.normal)
-                            {
-                                rightHandFix = true;
-                            }
-                            else
-                                rightHandFix = false;
-                        }
-                    }
-                    else
-                        rightHandFix = false;
-
-                    rightOrigin += forwardCheckHit.normal / 1.5f;
-                    if (obstacleData.canBeClimb) Debug.DrawRay(rightOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 3.5f), Color.red);
-                    if (Physics.Raycast(rightOrigin, Vector3.down, heightCheckHit.point.y - forwardCheckHit.point.y + 3.5f, LayerMask.GetMask("Default")))
-                    {
-                        rightHandFix = false;
-                    }
-                    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                    #endregion
-                }
-
-
-                // Si tout est beau et que les deux main sont fixés
-                if (leftHandFix == true && rightHandFix == true)
-                {
-                    obstacleData.canBeClimb = true;
-            
-                    obstacleData.leftHandPos.y = leftCheckHit.point.y;
-                    obstacleData.rightHandPos.y = rightCheckHit.point.y;
-                    obstacleData.playerHangPos = Vector3.Lerp(obstacleData.leftHandPos, obstacleData.rightHandPos, 0.5f);
-                    obstacleData.playerHangPos += forwardCheckHit.normal * WallClimb.hangDistanceFromWall;
-                    obstacleData.playerHangPos.y -= WallClimb.hangDistanceFromTop;
-                }
-                else
-                {
-                    obstacleData.canBeClimb = false;
-                }
-            
-            }
-
-
-
-
-
-            if (obstacleData.canBeClimb) Debug.DrawLine(forwardCheckHit.point, obstacleData.leftHandPos, Color.cyan);
-            if (obstacleData.canBeClimb) Debug.DrawLine(forwardCheckHit.point, obstacleData.rightHandPos, Color.cyan);
-
-
-
-            if (obstacleData.canBeClimb) Debug.DrawRay(heightCheckOrigin, Vector3.down * 5, Color.cyan);
-                                    
-        }
-        else
-        {
-            obstacleData.canBeClimb = false;
-        }
-
-        return obstacleData;
-    }
 
 
     //Renvoie le target rotation du joueur selon le vector de direction envoyer
@@ -574,6 +289,8 @@ public class PlayerController : MonoBehaviour
     }
 
 
+
+
     //Set la position du LookTarget pour que la tete du player tourne dans la direction avec le component LookAtIk
     public void LookTarget()
     {
@@ -581,7 +298,6 @@ public class PlayerController : MonoBehaviour
         lookTargetPosition.y = anim.GetBoneTransform(HumanBodyBones.Head).position.y;
         IkRef.lookTarget.position = lookTargetPosition;
     }
-
 
     //Check quelle pied est devant pour pouvoir lancé les animation en conséquence du pied qui est en avant
     public bool RightFootForward()
@@ -597,17 +313,14 @@ public class PlayerController : MonoBehaviour
 
         return result;
     }
-
-  
-
-
-    
+   
     //Set les transform du jouer comme la rotation et la position et garde le model au centre du parent
     void StayInConrtoller()
     {
         anim.transform.localPosition = Vector3.zero;
         anim.transform.localEulerAngles = Vector3.zero;
     }
+
 
 
     //Check si le player touche au sol
@@ -658,7 +371,6 @@ public class PlayerController : MonoBehaviour
             transform.position = Vector3.Lerp(transform.position, heightPos, Time.deltaTime * Movement.heightAdaptationSpeed);
         }
     }
-
 
     //Check l'inclinaison du sol et determine si on la monde ou descent
     [HideInInspector] public OnSlopeData groundSlopeDataResult = new OnSlopeData();
@@ -738,8 +450,291 @@ public class PlayerController : MonoBehaviour
         return groundSlopeDataResult;
     }
 
+    // Regarde si il y a un obstacle devant le player
+    private bool leftHandFix;
+    private bool rightHandFix;
+    public ObstacleForwardData obstacleData = new ObstacleForwardData();
+    public ObstacleForwardData ObstacleForward()
+    {
 
-  
+        Vector3 forwardCheckOrigin = transform.position;
+        forwardCheckOrigin.y += 1;
+
+
+        Vector3 forwardCheckDirection = transform.forward;
+
+        // if(leftHandFix && rightHandFix)
+        // {
+        //     if (Vector3.Distance(transform.position, obstacleData.leftHandPos) > Vector3.Distance(transform.position, obstacleData.rightHandPos))
+        //         forwardCheckDirection = Vector3.Lerp(-transform.right, transform.forward, obstacleDotProduct);
+        //     else
+        //         forwardCheckDirection = Vector3.Lerp(transform.right, transform.forward, obstacleDotProduct);
+        //     forwardCheckDirection = Vector3.Lerp(forwardCheckDirection, transform.forward, 0.5f);
+        // }
+
+
+        Debug.DrawRay(forwardCheckOrigin, forwardCheckDirection * Movement.forwardObstacleCheckDistance, Color.cyan);
+
+
+        RaycastHit forwardCheckHit;
+        // regarde devant le joueur si il y a un mur
+        if (Physics.Raycast(forwardCheckOrigin, forwardCheckDirection, out forwardCheckHit, Movement.forwardObstacleCheckDistance))
+        {
+            obstacleData.distance = Vector3.Distance(forwardCheckOrigin, forwardCheckHit.point);
+            obstacleData.playerHangdAngle = -forwardCheckHit.normal;
+            obstacleData.normal = forwardCheckHit.normal;
+
+
+            //obstacleDotProduct = Vector3.Dot(-forwardCheckHit.normal, transform.forward);
+
+
+            Vector3 heightCheckOrigin = forwardCheckHit.point + -forwardCheckHit.normal / 2;
+            heightCheckOrigin.y += 4;
+
+            RaycastHit heightCheckHit;
+
+            // regarde la hauteur du mur
+            if (Physics.Raycast(heightCheckOrigin, Vector3.down, out heightCheckHit, 5))
+            {
+
+                Vector3 leftHandSurfaceNormal;
+                Vector3 rightHandSurfaceNormal;
+
+                obstacleData.playerOnPos = heightCheckHit.point;
+                obstacleData.relativeHeight = heightCheckHit.point.y - transform.position.y;
+
+
+                //donne la direction gauche de la normal de l'obstacle
+                Vector3 leftNormal = -Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
+                obstacleData.leftHandPos = forwardCheckHit.point + leftNormal * (WallClimb.handsSpace / 2);
+                obstacleData.leftHandPos.y = heightCheckHit.point.y;
+
+                //donne la direction droite de la normal de l'obstacle
+                Vector3 rightNormal = Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
+                obstacleData.rightHandPos = forwardCheckHit.point + rightNormal * (WallClimb.handsSpace / 2);
+                obstacleData.rightHandPos.y = heightCheckHit.point.y;
+
+                #region First Hands Place Check
+                /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                ///Regarde la place de la main gauche
+                RaycastHit leftCheckHit;
+                Vector3 leftOrigin = -forwardCheckHit.normal / 3;
+                leftOrigin.y = 0;
+                leftOrigin += obstacleData.leftHandPos + (Vector3.up / 2);
+
+                if (obstacleData.canBeClimb) Debug.DrawRay(leftOrigin, Vector3.down * 1, Color.cyan);
+                if (Physics.Raycast(leftOrigin, Vector3.down, out leftCheckHit, 1, LayerMask.GetMask("Default")))
+                {
+                    if (leftCheckHit.point.y == heightCheckHit.point.y)
+                    {
+
+                        leftHandFix = true;
+                    }
+                    else
+                    {
+
+                        //regarde si les normals sont plus ou moins parreille pour savoir si c'est un angle ou un palier
+                        if (leftCheckHit.normal == heightCheckHit.normal)
+                        {
+
+                            leftHandFix = true;
+                        }
+                        else
+                        {
+
+                            leftHandFix = false;
+                        }
+
+                    }
+                }
+                else
+                    leftHandFix = false;
+
+                leftOrigin += forwardCheckHit.normal / 1.5f;
+                if (obstacleData.canBeClimb) Debug.DrawRay(leftOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f), Color.cyan);
+                if (Physics.Raycast(leftOrigin, Vector3.down, heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f, LayerMask.GetMask("Default")))
+                {
+                    leftHandFix = false;
+                }
+
+                ///Regarde la place de la main droite
+                RaycastHit rightCheckHit;
+                Vector3 rightOrigin = -forwardCheckHit.normal / 3;
+                rightOrigin.y = 0;
+                rightOrigin += obstacleData.rightHandPos + (Vector3.up / 2);
+
+                if (obstacleData.canBeClimb) Debug.DrawRay(rightOrigin, Vector3.down * 1, Color.cyan);
+                if (Physics.Raycast(rightOrigin, Vector3.down, out rightCheckHit, 1, LayerMask.GetMask("Default")))
+                {
+                    if (rightCheckHit.point.y == heightCheckHit.point.y)
+                    {
+                        rightHandFix = true;
+                    }
+                    else
+                    {
+                        //regarde si les normals sont plus ou moins parreille pour savoir si c'est un angle ou un palier
+                        if (rightCheckHit.normal == heightCheckHit.normal)
+                        {
+                            rightHandFix = true;
+                        }
+                        else
+                            rightHandFix = false;
+                    }
+                }
+                else
+                    rightHandFix = false;
+
+                rightOrigin += forwardCheckHit.normal / 1.5f;
+                if (obstacleData.canBeClimb) Debug.DrawRay(rightOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f), Color.cyan);
+                if (Physics.Raycast(rightOrigin, Vector3.down, heightCheckHit.point.y - forwardCheckHit.point.y + 0.5f, LayerMask.GetMask("Default")))
+                {
+                    rightHandFix = false;
+                }
+                /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                #endregion
+
+                //si les deux main sont dans le vire, le mur ne peut pas etre monté
+
+                bool recheck = false;
+                if (rightHandFix == false && leftHandFix == true)
+                {
+                    obstacleData.playerOnPos += leftNormal * (WallClimb.handsSpace / 2);
+                    obstacleData.leftHandPos += leftNormal * (WallClimb.handsSpace / 2);
+                    obstacleData.rightHandPos += leftNormal * (WallClimb.handsSpace / 2);
+
+                    leftOrigin += leftNormal * (WallClimb.handsSpace / 2);
+                    rightOrigin += leftNormal * (WallClimb.handsSpace / 2);
+
+                    recheck = true;
+                }
+                else if (leftHandFix == false && rightHandFix == true)
+                {
+                    obstacleData.playerOnPos += rightNormal * (WallClimb.handsSpace / 2);
+                    obstacleData.leftHandPos += rightNormal * (WallClimb.handsSpace / 2);
+                    obstacleData.rightHandPos += rightNormal * (WallClimb.handsSpace / 2);
+
+                    leftOrigin += rightNormal * (WallClimb.handsSpace / 2);
+                    rightOrigin += rightNormal * (WallClimb.handsSpace / 2);
+
+                    recheck = true;
+                }
+
+
+                if (recheck)
+                {
+                    #region Second Hands Place Check
+                    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                    ///Regarde la place de la main gauche
+                    leftOrigin -= forwardCheckHit.normal / 1.5f;
+                    leftOrigin += Vector3.up * 2;
+                    if (obstacleData.canBeClimb) Debug.DrawRay(leftOrigin, Vector3.down * 4, Color.red);
+                    if (Physics.Raycast(leftOrigin, Vector3.down, out leftCheckHit, 4, LayerMask.GetMask("Default")))
+                    {
+                        leftHandSurfaceNormal = leftCheckHit.normal;
+
+                        //si la hauteur est pareille ca veut dire que c'est droit
+                        if (leftCheckHit.point.y == heightCheckHit.point.y)
+                        {
+                            leftHandFix = true;
+                        }
+                        else
+                        {
+                            //regarde si les normals sont plus ou moins parreille pour savoir si c'est un angle ou un palier
+                            if (leftCheckHit.normal == heightCheckHit.normal)
+                            {
+                                leftHandFix = true;
+                            }
+                            else
+                                leftHandFix = false;
+                        }
+                    }
+                    else
+                        leftHandFix = false;
+
+                    leftOrigin += forwardCheckHit.normal / 1.5f;
+                    if (obstacleData.canBeClimb) Debug.DrawRay(leftOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 3.5f), Color.red);
+                    if (Physics.Raycast(leftOrigin, Vector3.down, heightCheckHit.point.y - forwardCheckHit.point.y + 3.5f, LayerMask.GetMask("Default")))
+                    {
+                        leftHandFix = false;
+                    }
+
+                    ///Regarde la place de la main droite
+                    rightOrigin -= forwardCheckHit.normal / 1.5f;
+                    rightOrigin += Vector3.up * 2;
+                    if (obstacleData.canBeClimb) Debug.DrawRay(rightOrigin, Vector3.down * 4, Color.red);
+                    if (Physics.Raycast(rightOrigin, Vector3.down, out rightCheckHit, 4, LayerMask.GetMask("Default")))
+                    {
+                        rightHandSurfaceNormal = rightCheckHit.normal;
+
+                        //si la hauteur est pareille ca veut dire que c'est droit
+                        if (rightCheckHit.point.y == heightCheckHit.point.y)
+                        {
+                            rightHandFix = true;
+                        }
+                        else
+                        {
+                            //regarde si les normals sont plus ou moins parreille pour savoir si c'est un angle ou un palier
+                            if (rightCheckHit.normal == heightCheckHit.normal)
+                            {
+                                rightHandFix = true;
+                            }
+                            else
+                                rightHandFix = false;
+                        }
+                    }
+                    else
+                        rightHandFix = false;
+
+                    rightOrigin += forwardCheckHit.normal / 1.5f;
+                    if (obstacleData.canBeClimb) Debug.DrawRay(rightOrigin, Vector3.down * (heightCheckHit.point.y - forwardCheckHit.point.y + 3.5f), Color.red);
+                    if (Physics.Raycast(rightOrigin, Vector3.down, heightCheckHit.point.y - forwardCheckHit.point.y + 3.5f, LayerMask.GetMask("Default")))
+                    {
+                        rightHandFix = false;
+                    }
+                    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                    #endregion
+                }
+
+
+                // Si tout est beau et que les deux main sont fixés
+                if (leftHandFix == true && rightHandFix == true)
+                {
+                    obstacleData.canBeClimb = true;
+
+                    obstacleData.leftHandPos.y = leftCheckHit.point.y;
+                    obstacleData.rightHandPos.y = rightCheckHit.point.y;
+                    obstacleData.playerHangPos = Vector3.Lerp(obstacleData.leftHandPos, obstacleData.rightHandPos, 0.5f);
+                    obstacleData.playerHangPos += forwardCheckHit.normal * WallClimb.hangDistanceFromWall;
+                    obstacleData.playerHangPos.y -= WallClimb.hangDistanceFromTop;
+                }
+                else
+                {
+                    obstacleData.canBeClimb = false;
+                }
+
+            }
+
+
+
+
+
+            if (obstacleData.canBeClimb) Debug.DrawLine(forwardCheckHit.point, obstacleData.leftHandPos, Color.cyan);
+            if (obstacleData.canBeClimb) Debug.DrawLine(forwardCheckHit.point, obstacleData.rightHandPos, Color.cyan);
+
+
+
+            if (obstacleData.canBeClimb) Debug.DrawRay(heightCheckOrigin, Vector3.down * 5, Color.cyan);
+
+        }
+        else
+        {
+            obstacleData.canBeClimb = false;
+        }
+
+        return obstacleData;
+    }
+
+
 }
 [System.Serializable]
 public class OnSlopeData

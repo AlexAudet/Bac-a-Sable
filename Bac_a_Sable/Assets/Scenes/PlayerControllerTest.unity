@@ -471,6 +471,36 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: baebdd3b26f756b4c8f1b2d2efe1cf42, type: 3}
+--- !u!1 &166976423
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 166976424}
+  m_Layer: 8
+  m_Name: Left_Hand_Transform
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &166976424
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 166976423}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 1846822339}
+  m_RootOrder: 2
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &175352040 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4800564899037334, guid: 2f3e27eecb190e44a9af50723c394274, type: 3}
@@ -1418,6 +1448,36 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7baaf68ca3f91f74ea33ff5461444332, type: 3}
+--- !u!1 &463742831
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 463742832}
+  m_Layer: 8
+  m_Name: Look_Transform
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &463742832
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 463742831}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 1846822339}
+  m_RootOrder: 1
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &479309993
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2502,6 +2562,36 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4626354519981188, guid: 0b49b21974f2e634d8523f26d2e7516c, type: 3}
   m_PrefabInstance: {fileID: 1714931283}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1118209088
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1118209089}
+  m_Layer: 8
+  m_Name: Right_Hand_Transform
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1118209089
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1118209088}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 1846822339}
+  m_RootOrder: 3
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1128424838
 GameObject:
   m_ObjectHideFlags: 0
@@ -2747,10 +2837,10 @@ MonoBehaviour:
   fixTransforms: 1
   solver:
     executedInEditor: 0
-    IKPosition: {x: 3.3169713, y: 1.3880513, z: 23.228455}
+    IKPosition: {x: 3.31, y: 1.3374462, z: 23.207338}
     IKPositionWeight: 1
     root: {fileID: 1245609033}
-    target: {fileID: 2136226350}
+    target: {fileID: 463742832}
     spine:
     - transform: {fileID: 1586830676}
       weight: 0
@@ -3214,7 +3304,7 @@ MonoBehaviour:
       planeBone3: {fileID: 0}
       planeRotationOffset: {x: 0, y: 0, z: 0, w: 1}
     - bone: {fileID: 1801452613}
-      target: {fileID: 0}
+      target: {fileID: 166976424}
       positionWeight: 0
       rotationWeight: 0
       position: {x: 0, y: 0, z: 0}
@@ -3228,7 +3318,7 @@ MonoBehaviour:
       planeBone3: {fileID: 1799319713}
       planeRotationOffset: {x: 0, y: 0, z: 0, w: 1}
     - bone: {fileID: 1342208593}
-      target: {fileID: 0}
+      target: {fileID: 1118209089}
       positionWeight: 0
       rotationWeight: 0
       position: {x: 0, y: 0, z: 0}
@@ -4455,7 +4545,7 @@ Transform:
   - {fileID: 657691769}
   - {fileID: 2112639065}
   m_Father: {fileID: 0}
-  m_RootOrder: 10
+  m_RootOrder: 9
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &1783273421 stripped
 Transform:
@@ -4613,42 +4703,62 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 769aef8558fe87b4592e0e6981e3e2f2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SprintInput: Sprint
-  LockOnInput: LockOn
-  JumpImput: Jump
-  RollInput: Roll
   showDebug: 1
-  lookTarget: {fileID: 2136226350}
-  speed: 1
-  sprintSpeed: 1
-  acceleration: 5
-  rotationSpeed: 6
-  heightFromGroundAdaptation: 20
-  gravityForce: -5
-  jumpForce: 10
-  airJumpAmount: 15
-  airControlSpeed: 5
-  rollDistanceMultiply: 2
-  forwardObstacleCheckDistance: 3
-  groundCheckDistance: 0.5
-  airGroundCheckDistance: 0.1
-  maxSlopeWalkable: 50
-  minSlopeAffectSpeed: 15
-  overSlopeDecceleration: 3
-  slideingAcceleration: 0.5
-  slidingSpeedRange: {x: 10, y: 25}
-  startDistanceFromBottom: 1.5
-  sphereCastRadius: 0.25
-  sphereCastDistance: 0.75
-  raycastLength: 1.3
-  rayOriginOffset1: {x: -0.2, y: 0.5, z: 0.16}
-  rayOriginOffset2: {x: 0.2, y: 0.5, z: -0.16}
-  handsSpace: 1
+  InputName:
+    AimInput: Aim
+    JumpImput: Jump
+    RollInput: Roll
+  IkRef:
+    lookTarget: {fileID: 463742832}
+    leftHandTransform: {fileID: 166976424}
+    rightHandTransform: {fileID: 1118209089}
+    leftFootTransform: {fileID: 0}
+    rightFootransform: {fileID: 0}
+  Movement:
+    speed: 1
+    acceleration: 4
+    rotationSpeed: 5
+    heightAdaptationSpeed: 20
+    rollDistanceMultiply: 2
+    jumpUpForce: 10
+    jumpForwardForce: 4.5
+    airJumpAmount: 1
+    airControlSpeed: 5
+    gravityForce: -5
+    forwardObstacleCheckDistance: 3
+    groundCheckDistance: 0.5
+    airGroundCheckDistance: 0.1
+  slopeAffectMovement: 1
+  OnSlope:
+    maxSlopeWalkable: 50
+    minSlopeAffectSpeed: 15
+    overSlopeDecceleration: 3
+    canSlide: 0
+    slideingAcceleration: 0.5
+    slidingSpeedRange: {x: 2, y: 15}
+    startDistanceFromBottom: 0.2
+    sphereCastRadius: 0.5
+    sphereCastDistance: 0.2
+    raycastLength: 1
+    rayOriginOffset1: {x: -0.2, y: 0.5, z: 0.16}
+    rayOriginOffset2: {x: 0.2, y: 0.5, z: -0.16}
+  canClimbWall: 1
+  WallClimb:
+    handsSpace: 1
+    hangDistanceFromTop: 1.7
+    hangDistanceFromWall: 0.5
+    distanceFromTopToHang: 2
+    distanceFromWallToHang: 1
+  IK: {fileID: 0}
   camTransform: {fileID: 0}
   noRotCamTransform: {fileID: 0}
   rigid: {fileID: 0}
   currentAirJumpAmount: 0
   grounded: 0
+  groundSlopeDataResult:
+    slopeAngle: 0
+    slopeDirection: {x: 0, y: 0, z: 0}
+    slopeDotDirection: 0
 --- !u!4 &1846822339
 Transform:
   m_ObjectHideFlags: 0
@@ -4661,6 +4771,9 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 1245609033}
+  - {fileID: 463742832}
+  - {fileID: 166976424}
+  - {fileID: 1118209089}
   m_Father: {fileID: 0}
   m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -4960,57 +5073,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1991409398}
   m_Mesh: {fileID: 4300030, guid: 5415c097506e8da42886699d81a1bd71, type: 3}
---- !u!1 &2083075895
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2083075897}
-  - component: {fileID: 2083075896}
-  m_Layer: 0
-  m_Name: TargetManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &2083075896
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2083075895}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 45c21b994253dce4da42e39930e51af2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  healthBarOffset: {x: 0, y: 1, z: 0}
-  objetReference: {fileID: 1897307273657532, guid: 7094eb5fc31a84847a29440d1ce60ec6, type: 3}
-  canvasReference: {fileID: 416261607954738137, guid: ab07fa1ac860dc74fa30a79c91b373f8, type: 3}
-  spawnPosition: {x: -42, y: 5, z: -39}
-  speed: 5
-  TargetScale: 3
-  motionRange: {x: 7, y: 4, z: 7}
-  direction: {x: 1, y: 1, z: 1}
---- !u!4 &2083075897
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2083075895}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.18683721, y: 1.697573, z: 21.517601}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 9
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &2096797686 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4940538950366130, guid: 2f3e27eecb190e44a9af50723c394274, type: 3}
