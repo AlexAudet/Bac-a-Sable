@@ -11,28 +11,28 @@ public class PlayerController : MonoBehaviour
     public bool showDebug = false;
 
     //Class avec les nom des input pour le input manager
-    [FoldoutGroup("Input Name", false)]
+    [FoldoutGroup("Input Name")]
     [PropertySpace(10,10)]
     [HideLabel]
     [Indent]
     public InputName InputName;
 
     //Class avec les reference de transform pour le IK
-    [FoldoutGroup("IK References", false)]
+    [FoldoutGroup("IK References")]
     [PropertySpace(10, 10)]
     [HideLabel]
     [Indent]
     public IKTransformRef IkRef;
 
     //Class avec les attributs de movement
-    [FoldoutGroup("Movement Variable", false)]
+    [FoldoutGroup("Movement Variable")]
     [PropertySpace(10, 10)]
     [HideLabel]
     [Indent]
     public MovementAttribut Movement;
 
     //Class avec les attributs de movement sur les slope
-    [FoldoutGroup("On Slope Movement Variable", false)]
+    [FoldoutGroup("On Slope Movement Variable")]
     [PropertySpace(10, 10)]
     [Indent]
     public bool slopeAffectMovement;
@@ -44,7 +44,7 @@ public class PlayerController : MonoBehaviour
     public OnSlopeAttribut OnSlope;
 
     //Class avec les attributs de climb sur les murs
-    [FoldoutGroup("Wall Climb Variable", false)]
+    [FoldoutGroup("Wall Climb Variable")]
     [PropertySpace(10, 10)]
     [Indent]
     public bool canClimbWall;
@@ -88,13 +88,11 @@ public class PlayerController : MonoBehaviour
     {
         state = state.Process();
         StayInConrtoller();
-        ObstacleForward();
     }
 
     private void FixedUpdate()
     {
-        ObstacleForward();
-        CheckIfGrounded();
+        state.FixedUpdate(); 
     }
 
 
@@ -449,6 +447,7 @@ public class PlayerController : MonoBehaviour
     }
 
 
+
     //Renvoie le target rotation du joueur selon le vector de direction envoyer
     public Quaternion TargetRotation(Vector3 targetDir, bool forceTurn = false, bool instantTurn = false)
     {
@@ -538,6 +537,7 @@ public class PlayerController : MonoBehaviour
         slopeMoveAmount = Mathf.Clamp(Remap(slopeData.slopeAngle, OnSlope.minSlopeAffectSpeed, OnSlope.maxSlopeWalkable, 1, 0), 0, 1);
         slopeMoveAmount = Mathf.Clamp(slopeMoveAmount + slopDotDirection, 0, 1);
         slopeMoveAmount *= targetMoveAmount;
+        Debug.Log(slopeMoveAmount);
 
         if (slopeData.slopeAngle < OnSlope.maxSlopeWalkable)
         {
@@ -661,7 +661,7 @@ public class PlayerController : MonoBehaviour
 
 
     //Check l'inclinaison du sol et determine si on la monde ou descent
-    [HideInInspector] public OnSlopeData groundSlopeDataResult = new OnSlopeData();
+     public OnSlopeData groundSlopeDataResult = new OnSlopeData();
     public OnSlopeData CheckGroundSlope()
     {
         Vector3 origin = transform.position;
@@ -736,11 +736,9 @@ public class PlayerController : MonoBehaviour
         }
 
         return groundSlopeDataResult;
-    }
-
-
-  
+    } 
 }
+
 [System.Serializable]
 public class OnSlopeData
 {

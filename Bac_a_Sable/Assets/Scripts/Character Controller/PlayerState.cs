@@ -41,6 +41,11 @@ public class PlayerState
         return this;
     }
 
+    public virtual void FixedUpdate()
+    {
+
+    }
+
     public float Remap(float value, float from1, float to1, float from2, float to2)
     {
         return (value - from1) / (to1 - from1) * (to2 - from2) + from2;
@@ -56,7 +61,6 @@ public class NormalMovement : PlayerState
     Vector3 lastPosition;
     Vector3 currentVelocity;
     float moveAmount;
-    float turnAmount;
     float canJumpTimer;
 
     public override void Enter()
@@ -71,7 +75,6 @@ public class NormalMovement : PlayerState
         canJumpTimer = 0;
         base.Enter();
     }
-
     public override void Update()
     {
         player.LookTarget();
@@ -147,7 +150,10 @@ public class NormalMovement : PlayerState
             stage = EVENT.EXIT;
         }
     }
-
+    public override void FixedUpdate()
+    {
+        player.ObstacleForward();
+    }
     public override void Exit()
     {
         base.Exit();
@@ -169,7 +175,6 @@ public class LockOnMovement : PlayerState
     Vector3 targetDir;
     float vertical;
     float horizontal;
-    float targetMoveAmount;
     float moveAmount;
     float turnAmount;
 
@@ -191,7 +196,10 @@ public class LockOnMovement : PlayerState
 
         player.IkRef.lookTarget.position = Vector3.Lerp(player.IkRef.lookTarget.position, (player.camTransform.position + player.camTransform.forward * 10), Time.deltaTime * 8);
     }
-
+    public override void FixedUpdate()
+    {
+        player.ObstacleForward();
+    }
     public override void Exit()
     {
         anim.SetBool("LockOn", false);
@@ -213,8 +221,6 @@ public class Sliding : PlayerState
         
         base.Enter();
     }
-
-
     public override void Update()
     {
         slopeData = player.CheckGroundSlope();
@@ -231,7 +237,10 @@ public class Sliding : PlayerState
 
         player.transform.rotation = player.TargetRotation(lookDirection, true);
     }
-
+    public override void FixedUpdate()
+    {
+        player.ObstacleForward();
+    }
     public override void Exit()
     {
         base.Exit();
@@ -312,7 +321,10 @@ public class NotGrounded : PlayerState
             stage = EVENT.EXIT;
         }
     }
-
+    public override void FixedUpdate()
+    {
+        player.ObstacleForward();
+    }
     public override void Exit()
     {
         anim.SetBool("IsGrounded", true);
@@ -421,7 +433,10 @@ public class Jump : PlayerState
             }
         }                     
     }
-
+    public override void FixedUpdate()
+    {
+        player.ObstacleForward();
+    }
     public override void Exit()
     {
         base.Exit();
@@ -448,28 +463,27 @@ public class Hang: PlayerState
 
         base.Enter();
     }
-
-
     public override void Update()
     {
-        player.transform.position = Vector3.Lerp(player.transform.position, data.playerHangPos, Time.deltaTime * 10);
+        if(0.6f > Vector3.Dot(player.TargetDirection(notRotTransform: true), player.transform.forward­))
+            player.transform.position = Vector3.Lerp(player.transform.position, data.playerHangPos, Time.deltaTime * 10);
+
         player.transform.rotation = Quaternion.Slerp(player.transform.rotation, player.TargetRotation(data.playerHangdAngle, instantTurn: true), Time.deltaTime * 10);
 
         player.IkRef.leftHandTransform.position = Vector3.Lerp(player.IkRef.leftHandTransform.position, data.leftHandPos, Time.deltaTime * 10);
         player.IkRef.rightHandTransform.position = Vector3.Lerp(player.IkRef.rightHandTransform.position, data.rightHandPos, Time.deltaTime * 10);
         player.IK.solver.leftHandEffector.target.position = player.IkRef.leftHandTransform.position;
-        player.IK.solver.leftHandEffector.positionWeight = 1; 
+        //player.IK.solver.leftHandEffector.positionWeight = 1; 
         player.IK.solver.rightHandEffector.target.position = player.IkRef.rightHandTransform.position;
-        player.IK.solver.rightHandEffector.positionWeight = 1;
+       // player.IK.solver.rightHandEffector.positionWeight = 1;
 
         canJumpTimer += Time.deltaTime;
 
-        if (Vector3.Dot(player.TargetDirection(notRotTransform: true), - player.transform.forward) > 0.5f)
-        {
-            anim.CrossFade("In_Air_Loop", 0.1f);
-            nextState = new NotGrounded(player, anim);
-            stage = EVENT.EXIT;
-        }
+        anim.SetFloat("DotForward", Vector3.Dot(player.TargetDirection(notRotTransform: true), player.transform.forward));
+        anim.SetFloat("DotLeft", Vector3.Dot(player.TargetDirection(notRotTransform: true), -player.transform.right));
+        anim.SetFloat("DotRight", Vector3.Dot(player.TargetDirection(notRotTransform: true), player.transform.right));
+
+        player.transform.position += anim.deltaPosition;
 
         if (player.Jump() && canJumpTimer >= 0.4f)
         {
@@ -479,7 +493,10 @@ public class Hang: PlayerState
             stage = EVENT.EXIT;
         }
     }
+    public override void FixedUpdate()
+    {
 
+    }
     public override void Exit()
     {
         player.IK.solver.leftHandEffector.positionWeight = 0;
