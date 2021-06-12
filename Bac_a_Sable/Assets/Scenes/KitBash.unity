@@ -218,6 +218,83 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &991180337
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_RootOrder
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 6.0360074
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 3.5676274
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -6443455590495078316, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 62a627cc272c7f6408f3240e05a313fb, type: 2}
+    - target: {fileID: -5361030643524589818, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 62a627cc272c7f6408f3240e05a313fb, type: 2}
+    - target: {fileID: 919132149155446097, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_Name
+      value: CyberpunkCar
+      objectReference: {fileID: 0}
+    - target: {fileID: 1279453503977770131, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 62a627cc272c7f6408f3240e05a313fb, type: 2}
+    - target: {fileID: 4494838460774992368, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 62a627cc272c7f6408f3240e05a313fb, type: 2}
+    - target: {fileID: 7451835235181751786, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 62a627cc272c7f6408f3240e05a313fb, type: 2}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 15482038a57b8a641829d92bb2baf3fe, type: 3}
 --- !u!1 &1079104758
 GameObject:
   m_ObjectHideFlags: 0
@@ -301,63 +378,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &1400764239
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: -8679921383154817045, guid: ee50f6dc94be16d499f4f5634369bbc4, type: 3}
-      propertyPath: m_RootOrder
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: ee50f6dc94be16d499f4f5634369bbc4, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 6.3952436
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: ee50f6dc94be16d499f4f5634369bbc4, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: ee50f6dc94be16d499f4f5634369bbc4, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 7.459342
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: ee50f6dc94be16d499f4f5634369bbc4, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: ee50f6dc94be16d499f4f5634369bbc4, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: ee50f6dc94be16d499f4f5634369bbc4, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: ee50f6dc94be16d499f4f5634369bbc4, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: ee50f6dc94be16d499f4f5634369bbc4, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: ee50f6dc94be16d499f4f5634369bbc4, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -8679921383154817045, guid: ee50f6dc94be16d499f4f5634369bbc4, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 919132149155446097, guid: ee50f6dc94be16d499f4f5634369bbc4, type: 3}
-      propertyPath: m_Name
-      value: CyberpunkCar_low
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: ee50f6dc94be16d499f4f5634369bbc4, type: 3}
 --- !u!1 &1782710919
 GameObject:
   m_ObjectHideFlags: 0
@@ -443,10 +463,10 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1782710919}
-  m_LocalRotation: {x: 0.42177165, y: -0.5019022, z: -0.026737135, w: 0.75464433}
+  m_LocalRotation: {x: 0.17714621, y: 0.31988147, z: 0.25130397, w: 0.8961816}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 2
-  m_LocalEulerAnglesHint: {x: 37.57, y: -79.796, z: -35.808}
+  m_LocalEulerAnglesHint: {x: 9.017, y: 42.119, z: 34.807}
