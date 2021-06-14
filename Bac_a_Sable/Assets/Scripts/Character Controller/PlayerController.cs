@@ -156,7 +156,7 @@ public class PlayerController : MonoBehaviour
         if (Input.GetAxisRaw("Horizontal") == 0 && Input.GetAxisRaw("Vertical") == 0) 
             result = false;
 
-        anim.SetBool("ToucheInput", result);
+        anim.SetBool("TouchInput", result);
 
         return result;
     }
@@ -215,17 +215,16 @@ public class PlayerController : MonoBehaviour
                 obstacleData.playerOnPos = heightCheckHit.point;
                 obstacleData.relativeHeight = heightCheckHit.point.y - transform.position.y;
 
-
                 //donne la direction gauche de la normal de l'obstacle
                 Vector3 leftNormal = -Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
                 obstacleData.leftHandPos = forwardCheckHit.point + leftNormal * (WallClimb.handsSpace / 2);
                 obstacleData.leftHandPos.y = heightCheckHit.point.y;
-            
+
                 //donne la direction droite de la normal de l'obstacle
                 Vector3 rightNormal = Vector3.Cross(forwardCheckHit.normal, Vector3.up).normalized;
                 obstacleData.rightHandPos = forwardCheckHit.point + rightNormal * (WallClimb.handsSpace / 2);
                 obstacleData.rightHandPos.y = heightCheckHit.point.y;
-            
+
                 #region First Hands Place Check
                 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 ///Regarde la place de la main gauche
@@ -407,6 +406,23 @@ public class PlayerController : MonoBehaviour
                     #endregion
                 }
 
+                #region footCheck
+                RaycastHit leftFootHit;            
+                if (Physics.Raycast(anim.GetBoneTransform(HumanBodyBones.LeftFoot).position + obstacleData.normal, -obstacleData.normal, out leftFootHit, 3))
+                {
+                    if(leftFootHit.transform.gameObject != gameObject)
+                        obstacleData.leftFootPos = leftFootHit.point;
+                    Debug.DrawLine(anim.GetBoneTransform(HumanBodyBones.LeftFoot).position + obstacleData.normal, obstacleData.leftFootPos, Color.cyan);
+                }
+                RaycastHit rightFootHit;
+                if (Physics.Raycast(anim.GetBoneTransform(HumanBodyBones.RightFoot).position + obstacleData.normal, -obstacleData.normal, out rightFootHit, 3))
+                {
+                    if (rightFootHit.transform.gameObject != gameObject)
+                        obstacleData.rightFootPos = rightFootHit.point;
+                    Debug.DrawLine(anim.GetBoneTransform(HumanBodyBones.RightFoot).position + obstacleData.normal, obstacleData.rightFootPos, Color.cyan);
+                }
+                #endregion
+
 
                 // Si tout est beau et que les deux main sont fixés
                 if (leftHandFix == true && rightHandFix == true)
@@ -510,11 +526,16 @@ public class PlayerController : MonoBehaviour
         if (TouchMovingInput())
         {
             targetMoveAmount = Vector3.Magnitude(targetDir);
+            currentMoveAmount = Mathf.Lerp(currentMoveAmount, targetMoveAmount, Time.deltaTime * Movement.acceleration);
         }
         else
+        {
             targetMoveAmount = 0;
+            currentMoveAmount = Mathf.Lerp(currentMoveAmount, targetMoveAmount, Time.deltaTime * 10);
+        }
+    
 
-        currentMoveAmount = Mathf.Lerp(currentMoveAmount, targetMoveAmount, Time.deltaTime * Movement.acceleration);
+  
 
         return currentMoveAmount;
     }
@@ -739,14 +760,12 @@ public class PlayerController : MonoBehaviour
     } 
 }
 
-[System.Serializable]
 public class OnSlopeData
 {
     public float slopeAngle;
     public Vector3 slopeDirection;
     public float slopeDotDirection;
 }
-
 
 public class ObstacleForwardData
 {
@@ -759,7 +778,12 @@ public class ObstacleForwardData
     public Vector3 playerOnPos;
     public Vector3 leftHandPos;
     public Vector3 rightHandPos;
+    public Vector3 leftFootPos;
+    public Vector3 rightFootPos;
 }
+
+
+
 
 [System.Serializable]
 public class IKTransformRef
@@ -808,7 +832,7 @@ public class MovementAttribut
     [PropertySpace(0, 5), Range(1, 10)]
     public float acceleration = 4;
     // la vitesse de rotation du joueur
-    [PropertySpace(0, 5), Range(1, 10)]
+    [PropertySpace(0, 5), Range(1, 30)]
     public float rotationSpeed = 5;
     //La vitesse a que la hauteur du joueur s'adapte au sol
     [PropertySpace(0, 5), Range(1, 100)]
@@ -857,21 +881,32 @@ public class OnSlopeAttribut
     //l'angle minimum qui affecte la vitesse de déplacement
     public float minSlopeAffectSpeed = 15;
     //la vitesse de decceleration sur les slopes
+    [PropertySpace(10, 0)]
     public float overSlopeDecceleration = 3;
 
     //Est-ce qu'on peut glisser lorsque que l'angle du slope est plus grande que maxSlopeWalkable
+    [PropertySpace(10,5)]
     public bool canSlide;
     //l'acceleration du glissement 
+    [ShowIf("@this.canSlide == true")]
     public float slideingAcceleration = 0.5f;
     //range de vitesse de glissement (si angle = maxSlopeWalkable = minimum vitesse / angle 90 degré = maximum vitesse)
+    [ShowIf("@this.canSlide == true")]
+    [PropertySpace(0, 10)]
     public Vector2 slidingSpeedRange = new Vector2(2, 15);
 
-    [Space(20)]
+    [FoldoutGroup("Raycast Settings", false)]
     public float startDistanceFromBottom = 0.2f;
+    [FoldoutGroup("Raycast Settings")]
     public float sphereCastRadius = 0.5f;
+    [FoldoutGroup("Raycast Settings")]
     public float sphereCastDistance = 0.2f;
+    [FoldoutGroup("Raycast Settings")]
     public float raycastLength = 1f;
+    [FoldoutGroup("Raycast Settings")]
+    [PropertySpace(10,0)]
     public Vector3 rayOriginOffset1 = new Vector3(-0.2f, 0.5f, 0.16f);
+    [FoldoutGroup("Raycast Settings")]
     public Vector3 rayOriginOffset2 = new Vector3(0.2f, 0.5f, -0.16f);
 
 }
@@ -880,13 +915,21 @@ public class OnSlopeAttribut
 public class WallClimbAttribut
 {
     //Distance entre les main lorsque qu'on est sur un mur
+    [PropertySpace(0,10)]
+    [Range(0, 2)]
     public float handsSpace = 1;
     //La distance que le joueur se tien du top du mur lorsqu'il est accrocher sur le rebord
+    [Range(0,3)]
     public float hangDistanceFromTop = 1.7f;
     //La distance que le joueur se tien du du mur lorsqu'il est accrocher sur le rebord
+    [PropertySpace(0, 10)]
+    [Range(0, 1)]
     public float hangDistanceFromWall = 0.5f;
     //la distance maximum du top du mur pour pouvoir s'accrocher au rebord
+    [Range(0, 3)]
     public float distanceFromTopToHang = 2;
     //la distance maximum du mur pour pouvoir s'accrocher au rebord
+    [PropertySpace(0, 10)]
+    [Range(0, 3)]
     public float distanceFromWallToHang = 1;
 }

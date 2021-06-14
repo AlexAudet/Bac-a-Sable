@@ -127,7 +127,7 @@ public class NormalMovement : PlayerState
         {
             Vector3 jumpDirection = Vector3.up * player.Movement.jumpUpForce;
             jumpDirection += player.transform.forward * 4.5f * (moveAmount * 2) * player.Movement.speed;
-            nextState = new Jump(player, anim, jumpDirection, false);
+            nextState = new Jump(player, anim, jumpDirection);
             stage = EVENT.EXIT;
         }
 
@@ -169,6 +169,7 @@ public class LockOnMovement : PlayerState
     public override void Enter()
     {
         anim.SetBool("LockOn", true);
+        player.currentAirJumpAmount = 0;
         base.Enter();
     }
 
@@ -218,7 +219,7 @@ public class Sliding : PlayerState
 
     public override void Enter()
     {
-        
+        player.currentAirJumpAmount = 0;
         base.Enter();
     }
     public override void Update()
@@ -266,8 +267,8 @@ public class NotGrounded : PlayerState
     }
     public override void Update()
     {
-  
 
+        player.TouchMovingInput();
 
         if (player.TouchMovingInput())
             velocityForce = player.TargetDirection(notRotTransform: true) * player.Movement.airControlSpeed;
@@ -289,7 +290,7 @@ public class NotGrounded : PlayerState
                 player.rigid.velocity = Vector3.zero;
                 Vector3 jumpDirection = Vector3.up * player.Movement.jumpUpForce;
                 jumpDirection += player.transform.forward * player.Movement.jumpForwardForce * (Vector3.Magnitude(player.TargetDirection(notRotTransform: true) * 2));
-                nextState = new Jump(player, anim, jumpDirection, true);
+                nextState = new Jump(player, anim, jumpDirection);
                 stage = EVENT.EXIT;
             }
 
@@ -334,10 +335,9 @@ public class NotGrounded : PlayerState
 
 public class Jump : PlayerState
 {
-    public Jump(PlayerController _player, Animator _anim, Vector3 _jumpDirection, bool _otherJump)
-        : base(_player, _anim) { jumpDirection = _jumpDirection; otherJump = _otherJump; }
+    public Jump(PlayerController _player, Animator _anim, Vector3 _jumpDirection)
+        : base(_player, _anim) { jumpDirection = _jumpDirection; }
 
-    bool otherJump;
     float timer;
     float fallTimer;
 
@@ -349,11 +349,27 @@ public class Jump : PlayerState
         CameraController.Instance.updateMode = CameraController.UpdateMode.FixedUpdate;
         player.rigid.isKinematic = false;
         player.rigid.velocity = Vector3.zero;
-        player.currentAirJumpAmount++;
+  
 
-        anim.SetBool("Jump", !otherJump);
-        anim.SetBool("OtherJump", otherJump);
-        anim.SetBool("IsGrounded", false);     
+        anim.SetBool("Jump", true);
+        anim.SetBool("IsGrounded", false);
+
+        switch (player.currentAirJumpAmount)
+        {
+            case 0:
+                anim.CrossFade("Jump", 0.1f);
+                break;
+            case 1:
+                anim.CrossFade("Jump_1", 0.1f);
+                break;
+            case 2:
+                anim.CrossFade("Jump_2", 0.1f);
+                break;
+            default:
+                break;
+        }
+
+        player.currentAirJumpAmount++;
 
         player.rigid.AddForce(jumpDirection, ForceMode.VelocityChange);
 
@@ -363,7 +379,9 @@ public class Jump : PlayerState
     }
     public override void Update()
     {
-     
+        player.TouchMovingInput();
+
+
         if (player.TouchMovingInput())
             velocityForce = player.TargetDirection(notRotTransform: true) * player.Movement.airControlSpeed;
         else
@@ -382,7 +400,7 @@ public class Jump : PlayerState
                 player.rigid.velocity = Vector3.zero;
                 Vector3 jumpDirection = Vector3.up * player.Movement.jumpUpForce;
                 jumpDirection += player.transform.forward * player.Movement.jumpForwardForce * (Vector3.Magnitude(player.TargetDirection(notRotTransform:true) * 2));
-                nextState = new Jump(player, anim, jumpDirection, !otherJump);
+                nextState = new Jump(player, anim, jumpDirection);
                 stage = EVENT.EXIT;
             }
 
@@ -453,11 +471,9 @@ public class Hang: PlayerState
 
     public override void Enter()
     {
-
         canJumpTimer = 0;
-        data = player.obstacleData;
-
-        player.rigid.isKinematic = true;       
+        player.rigid.isKinematic = true;
+        player.currentAirJumpAmount = 0;
         anim.CrossFade("Hang", 0.1f);
         anim.SetBool("Hang", true);
 
@@ -465,23 +481,40 @@ public class Hang: PlayerState
     }
     public override void Update()
     {
-        if(0.6f > Vector3.Dot(player.TargetDirection(notRotTransform: true), player.transform.forward­))
-            player.transform.position = Vector3.Lerp(player.transform.position, data.playerHangPos, Time.deltaTime * 10);
+        data = player.ObstacleForward();
+        float dotForward = Vector3.Dot(player.TargetDirection(notRotTransform: true), player.transform.forward);
+        float dotLeft = Vector3.Dot(player.TargetDirection(notRotTransform: true), -player.transform.right);
+        float dotRight = Vector3.Dot(player.TargetDirection(notRotTransform: true), player.transform.right);
 
-        player.transform.rotation = Quaternion.Slerp(player.transform.rotation, player.TargetRotation(data.playerHangdAngle, instantTurn: true), Time.deltaTime * 10);
+        anim.SetFloat("DotForward", dotForward);
+        anim.SetFloat("DotLeft", dotLeft);
+        anim.SetFloat("DotRight", dotRight);
 
         player.IkRef.leftHandTransform.position = Vector3.Lerp(player.IkRef.leftHandTransform.position, data.leftHandPos, Time.deltaTime * 10);
         player.IkRef.rightHandTransform.position = Vector3.Lerp(player.IkRef.rightHandTransform.position, data.rightHandPos, Time.deltaTime * 10);
-        player.IK.solver.leftHandEffector.target.position = player.IkRef.leftHandTransform.position;
-        //player.IK.solver.leftHandEffector.positionWeight = 1; 
+        player.IK.solver.leftHandEffector.target.position = player.IkRef.leftHandTransform.position; 
         player.IK.solver.rightHandEffector.target.position = player.IkRef.rightHandTransform.position;
-       // player.IK.solver.rightHandEffector.positionWeight = 1;
+
+        player.IkRef.leftFootTransform.position = Vector3.Lerp(player.IkRef.leftFootTransform.position, data.leftFootPos, Time.deltaTime * 10);
+        player.IkRef.rightFootransform.position = Vector3.Lerp(player.IkRef.rightFootransform.position, data.rightFootPos, Time.deltaTime * 10);
+        player.IK.solver.leftFootEffector.target.position = player.IkRef.leftFootTransform.position; 
+        player.IK.solver.rightFootEffector.target.position = player.IkRef.rightFootransform.position;
+
+     //  player.IK.solver.leftHandEffector.positionWeight = 1;
+     //  player.IK.solver.rightHandEffector.positionWeight = 1;
+     //
+     //  player.IK.solver.leftFootEffector.positionWeight = 1;
+     //  player.IK.solver.rightFootEffector.positionWeight = 1;
+
+
+        //if(0.6f > Vector3.Dot(player.TargetDirection(notRotTransform: true), player.transform.forward­))
+        player.transform.position = Vector3.Lerp(player.transform.position, data.playerHangPos, Time.deltaTime * 10);
+
+        player.transform.rotation = Quaternion.Slerp(player.transform.rotation, player.TargetRotation(data.playerHangdAngle, instantTurn: true), Time.deltaTime * 10);
 
         canJumpTimer += Time.deltaTime;
 
-        anim.SetFloat("DotForward", Vector3.Dot(player.TargetDirection(notRotTransform: true), player.transform.forward));
-        anim.SetFloat("DotLeft", Vector3.Dot(player.TargetDirection(notRotTransform: true), -player.transform.right));
-        anim.SetFloat("DotRight", Vector3.Dot(player.TargetDirection(notRotTransform: true), player.transform.right));
+      
 
         player.transform.position += anim.deltaPosition;
 
@@ -489,7 +522,7 @@ public class Hang: PlayerState
         {
             Vector3 jumpDirection = Vector3.up * player.Movement.jumpUpForce;
             jumpDirection += player.TargetDirection(notRotTransform: true) * player.Movement.jumpForwardForce * (Vector3.Magnitude(player.TargetDirection(notRotTransform: true) * 2));
-            nextState = new Jump(player, anim, jumpDirection, false);
+            nextState = new Jump(player, anim, jumpDirection);
             stage = EVENT.EXIT;
         }
     }

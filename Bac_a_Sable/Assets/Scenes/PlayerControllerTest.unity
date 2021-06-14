@@ -2752,6 +2752,36 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 0b49b21974f2e634d8523f26d2e7516c, type: 3}
+--- !u!1 &1234071343
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1234071344}
+  m_Layer: 8
+  m_Name: Right_Foot_Transform
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1234071344
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1234071343}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 1846822339}
+  m_RootOrder: 5
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1245609032 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1316981293597076, guid: 2f3e27eecb190e44a9af50723c394274, type: 3}
@@ -3272,7 +3302,7 @@ MonoBehaviour:
       planeBone3: {fileID: 1799319713}
       planeRotationOffset: {x: 0, y: 0, z: 0, w: 1}
     - bone: {fileID: 359817098}
-      target: {fileID: 0}
+      target: {fileID: 1885441599}
       positionWeight: 0
       rotationWeight: 0
       position: {x: 0, y: 0, z: 0}
@@ -3286,7 +3316,7 @@ MonoBehaviour:
       planeBone3: {fileID: 1799319713}
       planeRotationOffset: {x: 0, y: 0, z: 0, w: 1}
     - bone: {fileID: 1092859368}
-      target: {fileID: 0}
+      target: {fileID: 1234071344}
       positionWeight: 0
       rotationWeight: 0
       position: {x: 0, y: 0, z: 0}
@@ -3343,6 +3373,30 @@ MonoBehaviour:
     spineStiffness: 0.5
     pullBodyVertical: 0.5
     pullBodyHorizontal: 0
+--- !u!114 &1245609038
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1245609032}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c96ec8ee850b44337a19453c26b170ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weight: 1
+  ik: {fileID: 1245609037}
+  handsMaintainRelativePositionWeight: 0
+  bodyOffset: {x: 0, y: 0, z: 0}
+  leftShoulderOffset: {x: 0, y: 0, z: 0}
+  rightShoulderOffset: {x: 0, y: 0, z: 0}
+  leftThighOffset: {x: 0, y: 0, z: 0}
+  rightThighOffset: {x: 0, y: 0, z: 0}
+  leftHandOffset: {x: 0, y: 0, z: 0}
+  rightHandOffset: {x: 0, y: 0, z: 0}
+  leftFootOffset: {x: 0, y: 0, z: 0}
+  rightFootOffset: {x: 0, y: 0, z: 0}
 --- !u!1001 &1260389598
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4652,8 +4706,8 @@ MonoBehaviour:
     lookTarget: {fileID: 2038441898}
     leftHandTransform: {fileID: 1980618941}
     rightHandTransform: {fileID: 275860332}
-    leftFootTransform: {fileID: 0}
-    rightFootransform: {fileID: 0}
+    leftFootTransform: {fileID: 1885441599}
+    rightFootransform: {fileID: 1234071344}
   Movement:
     speed: 1
     acceleration: 4
@@ -4682,18 +4736,22 @@ MonoBehaviour:
     raycastLength: 1
     rayOriginOffset1: {x: -0.2, y: 0.5, z: 0.16}
     rayOriginOffset2: {x: 0.2, y: 0.5, z: -0.16}
-  canClimbWall: 0
+  canClimbWall: 1
   WallClimb:
-    handsSpace: 1
-    hangDistanceFromTop: 1.7
-    hangDistanceFromWall: 0.5
+    handsSpace: 0.7
+    hangDistanceFromTop: 1.75
+    hangDistanceFromWall: 0.39
     distanceFromTopToHang: 2
     distanceFromWallToHang: 1
-  IK: {fileID: 0}
-  camTransform: {fileID: 0}
-  noRotCamTransform: {fileID: 0}
-  rigid: {fileID: 0}
-  currentAirJumpAmount: 0
+    leftHandOffset: {x: 0, y: 0, z: 0}
+    rightHandOffset: {x: 0, y: 0, z: 0}
+    leftFootOffset: {x: 0, y: 0, z: 0}
+    rightFootOffset: {x: 0, y: 0, z: 0}
+  IK: {fileID: 1245609037}
+  camTransform: {fileID: 657691769}
+  noRotCamTransform: {fileID: 2112639065}
+  rigid: {fileID: 1846822341}
+  currentAirJumpAmount: 1
   grounded: 0
   groundSlopeDataResult:
     slopeAngle: 0
@@ -4714,6 +4772,8 @@ Transform:
   - {fileID: 2038441898}
   - {fileID: 1980618941}
   - {fileID: 275860332}
+  - {fileID: 1885441599}
+  - {fileID: 1234071344}
   m_Father: {fileID: 0}
   m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -4838,6 +4898,36 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4116722751635774, guid: 2f3e27eecb190e44a9af50723c394274, type: 3}
   m_PrefabInstance: {fileID: 2142638093}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1885441598
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1885441599}
+  m_Layer: 8
+  m_Name: Left_Foot_Transform
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1885441599
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1885441598}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 1846822339}
+  m_RootOrder: 4
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1892707580
 PrefabInstance:
   m_ObjectHideFlags: 0
